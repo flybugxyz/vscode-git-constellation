@@ -14,7 +14,6 @@ function App() {
   const [showBranches, setShowBranches] = useState(false);
   const [selectedCommitFiles, setSelectedCommitFiles] = useState<{hash: string, files: {status: string, path: string}[]} | null>(null);
   
-  // Collapse states for side pane sections
   const [filesExpanded, setFilesExpanded] = useState(true);
   const [detailsExpanded, setDetailsExpanded] = useState(true);
 
@@ -137,7 +136,7 @@ function App() {
                 <table>
                   <thead>
                     <tr>
-                      <th style={{ width: '250px' }}>Graph & Labels</th>
+                      <th style={{ width: '100px' }}>Graph</th>
                       <th>Description</th>
                       <th style={{ width: '150px' }}>Author</th>
                       <th style={{ width: '150px' }}>Date</th>
@@ -150,8 +149,15 @@ function App() {
                         className={selectedIndex === idx ? 'selected' : ''}
                         onClick={() => handleSelectCommit(idx, commit.hash)}
                       >
-                        <td style={{ width: '250px' }}></td>
-                        <td title={commit.message}>{commit.message}</td>
+                        <td style={{ width: '100px' }}></td>
+                        <td title={commit.message}>
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', flexWrap: 'nowrap', marginRight: '8px' }}>
+                              {renderRefs(commit.refs)}
+                            </div>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{commit.message}</span>
+                          </div>
+                        </td>
                         <td>{commit.author_name}</td>
                         <td>{formatDate(commit.date)}</td>
                       </tr>
