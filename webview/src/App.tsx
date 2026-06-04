@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './styles.css';
 import { GitGraph } from './GitGraph';
+import { FileTree } from './FileTree';
 
 declare const acquireVsCodeApi: any;
 const vscode = acquireVsCodeApi();
@@ -10,21 +11,20 @@ function App() {
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const [activeTab, setActiveTab] = useState<'log' | 'local'>('log');
   const [commitMessage, setCommitMessage] = useState('');
-  const [diff, setDiff] = useState<string>('');
   const [showBranches, setShowBranches] = useState(false);
+  const [selectedCommitFiles, setSelectedCommitFiles] = useState<{hash: string, files: string[]} | null>(null);
 
   useEffect(() => {
     vscode.postMessage({ type: 'ready' });
 
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
-      console.log('Webview received message:', message);
       switch (message.type) {
         case 'update':
           setGitData(message.payload);
           break;
-        case 'diff':
-          setDiff(message.diff);
+        case 'files':
+          setSelectedCommitFiles({ hash: message.hash, files: message.files });
           break;
       }
     };
@@ -58,7 +58,6 @@ function App() {
 
   const handleSelectCommit = (idx: number, hash: string) => {
     setSelectedIndex(idx);
-    setDiff('Loading diff...');
     vscode.postMessage({ type: 'getDiff', hash });
   };
 
@@ -67,92 +66,93 @@ function App() {
     setShowBranches(false);
   };
 
-  const renderDiff = (diffText: string) => {
-    return diffText.split('\n').map((line, i) => {
-      let className = '';
-      if (line.startsWith('+') && !line.startsWith('+++')) className = 'diff-line-added';
-      else if (line.startsWith('-') && !line.startsWith('---')) className = 'diff-line-removed';
-      else if (line.startsWith('diff') || line.startsWith('@@')) className = 'diff-header';
-      
-      return <div key={i} className={className}>{line}</div>;
-    });
+  const handleFileClick = (path: string) => {
+    if (selectedCommitFiles) {
+      vscode.postMessage({ type: 'openDiff', hash: selectedCommitFiles.hash, path });
+    }
   };
 
   return (
     <div className="container">
       <div className="tabs">
         <div className={`tab ${activeTab === 'log' ? 'active' : ''}`} onClick={() => setActiveTab('log')}>Log</div>
-        <div className={`tab ${activeTab === 'local' ? 'active' : ''}`} onClick={() => { setActiveTab('local'); setSelectedIndex(-1); setDiff(''); }}>
+        <div className={`tab ${activeTab === 'local' ? 'active' : ''}`} onClick={() => { setActiveTab('local'); setSelectedIndex(-1); setSelectedCommitFiles(null); }}>
           Local Changes {gitData?.status?.files.length > 0 && `(${gitData.status.files.length})`}
         </div>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {activeTab === 'log' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-            <div className="header">
-              <button 
-                style={{ background: 'none', border: '1px solid var(--vscode-panel-border)', padding: '2px 8px', fontSize: '10px' }}
-                onClick={() => setShowBranches(!showBranches)}
-              >
-                {gitData?.branches?.current || 'Branches'} ▾
-              </button>
-              {showBranches && (
-                <div className="branch-popup">
-                  {gitData?.branches?.all.map((b: string) => (
-                    <div 
-                      key={b} 
-                      className={`branch-item ${b === gitData.branches.current ? 'current' : ''}`}
-                      onClick={() => handleCheckout(b)}
-                    >
-                      {b}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <span style={{ marginLeft: '20px' }}>{gitData?.log?.all.length || 0} commits</span>
-            </div>
-          <div className="table-container" style={{ flex: selectedIndex >= 0 ? 1 : 2, position: 'relative' }}>
-            {gitData?.log?.all && (
-              <div style={{ position: 'absolute', top: '28px', left: 0, pointerEvents: 'none', zIndex: 5 }}>
-                <GitGraph commits={gitData.log.all} rowHeight={24} />
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+              <div className="header">
+                <button 
+                  style={{ background: 'none', border: '1px solid var(--vscode-panel-border)', padding: '2px 8px', fontSize: '10px' }}
+                  onClick={() => setShowBranches(!showBranches)}
+                >
+                  {gitData?.branches?.current || 'Branches'} ▾
+                </button>
+                {showBranches && (
+                  <div className="branch-popup">
+                    {gitData?.branches?.all.map((b: string) => (
+                      <div 
+                        key={b} 
+                        className={`branch-item ${b === gitData.branches.current ? 'current' : ''}`}
+                        onClick={() => handleCheckout(b)}
+                      >
+                        {b}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <span style={{ marginLeft: '20px' }}>{gitData?.log?.all.length || 0} commits</span>
               </div>
-            )}
-            <table>
-              <thead>
-                <tr>
-                  <th style={{ width: '150px' }}>Graph</th>
-                  <th>Description</th>
-                  <th style={{ width: '150px' }}>Author</th>
-                  <th style={{ width: '150px' }}>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gitData?.log?.all.map((commit: any, idx: number) => (
-                  <tr 
-                    key={commit.hash} 
-                    className={selectedIndex === idx ? 'selected' : ''}
-                    onClick={() => handleSelectCommit(idx, commit.hash)}
-                  >
-                    <td style={{ width: '150px' }}>
-                      {/* Space for absolute positioned graph */}
-                    </td>
-                    <td title={commit.message}>{commit.message}</td>
-                    <td>{commit.author_name}</td>
-                    <td>{formatDate(commit.date)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              <div className="table-container" style={{ flex: 1, position: 'relative' }}>
+                {gitData?.log?.all && (
+                  <div style={{ position: 'absolute', top: '28px', left: 0, pointerEvents: 'none', zIndex: 5 }}>
+                    <GitGraph commits={gitData.log.all} rowHeight={24} />
+                  </div>
+                )}
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '150px' }}>Graph</th>
+                      <th>Description</th>
+                      <th style={{ width: '150px' }}>Author</th>
+                      <th style={{ width: '150px' }}>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gitData?.log?.all.map((commit: any, idx: number) => (
+                      <tr 
+                        key={commit.hash} 
+                        className={selectedIndex === idx ? 'selected' : ''}
+                        onClick={() => handleSelectCommit(idx, commit.hash)}
+                      >
+                        <td style={{ width: '150px' }}></td>
+                        <td title={commit.message}>{commit.message}</td>
+                        <td>{commit.author_name}</td>
+                        <td>{formatDate(commit.date)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
             {selectedIndex >= 0 && (
-              <div className="diff-container">
-                {renderDiff(diff)}
+              <div className="side-pane">
+                <div className="side-pane-header">Changed Files</div>
+                {selectedCommitFiles ? (
+                  <FileTree files={selectedCommitFiles.files} onFileClick={handleFileClick} />
+                ) : (
+                  <div style={{ padding: '10px', fontSize: '11px' }}>Loading files...</div>
+                )}
               </div>
             )}
           </div>
         ) : (
-          <div className="local-changes-container">
+          <div className="local-changes-container" style={{ flex: 1 }}>
             <div className="files-list">
               {gitData?.status?.files.map((file: any) => (
                 <div key={file.path} className="file-item">

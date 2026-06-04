@@ -147,8 +147,45 @@ button {
   white-space: pre-wrap;
 }
 
-.diff-line-added { color: #50fa7b; }
-.diff-line-removed { color: #ff5555; }
+.side-pane {
+  width: 250px;
+  border-left: var(--jb-border);
+  background-color: var(--vscode-sideBar-background);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.side-pane-header {
+  padding: 4px 8px;
+  border-bottom: var(--jb-border);
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  background-color: var(--vscode-panel-background);
+}
+
+.tree-node {
+  padding-left: 12px;
+  font-size: 12px;
+}
+
+.tree-item {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tree-item:hover {
+  background-color: var(--jb-hover);
+}
+
+.tree-icon {
+  margin-right: 6px;
+  width: 14px;
+  text-align: center;
+}
 .branch-popup {
   position: absolute;
   top: var(--jb-header-height);

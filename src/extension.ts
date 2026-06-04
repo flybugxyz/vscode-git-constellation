@@ -10,6 +10,16 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerWebviewViewProvider(GitJBViewProvider.viewType, provider)
   );
 
+  // Register custom content provider for showing historical files
+  const contentProvider = new (class implements vscode.TextDocumentContentProvider {
+    async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
+      const [hash, ...pathParts] = uri.path.split('/');
+      const filePath = pathParts.join('/');
+      return await gitService.getFileContent(hash, filePath);
+    }
+  })();
+  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('git-jb-show', contentProvider));
+
   // Refresh on git changes
   const watcher = vscode.workspace.createFileSystemWatcher('**/.git/refs/heads/*');
   watcher.onDidChange(() => provider.refresh());
@@ -51,8 +61,17 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           this.refresh();
           break;
         case 'getDiff':
-          const diff = await this._gitService.getDiff(data.hash);
-          this._view?.webview.postMessage({ type: 'diff', diff });
+          const files = await this._gitService.getCommitFiles(data.hash);
+          this._view?.webview.postMessage({ type: 'files', hash: data.hash, files });
+          break;
+        case 'openDiff':
+          const { hash, path } = data;
+          const parentHash = await this._gitService.getParentHash(hash);
+          
+          const leftUri = vscode.Uri.parse(`git-jb-show:${parentHash || ''}/${path}`);
+          const rightUri = vscode.Uri.parse(`git-jb-show:${hash}/${path}`);
+          
+          vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${path} (${hash.substring(0, 7)})`);
           break;
         case 'checkout':
           await this._gitService.checkout(data.branch);

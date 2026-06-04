@@ -79,6 +79,38 @@ export class GitService {
     }
   }
 
+  public async getCommitFiles(hash: string) {
+    if (!this._git) return [];
+    try {
+      // Get list of files modified in this commit
+      const result = await this._git.raw(['show', '--name-only', '--pretty=format:', hash]);
+      return result.trim().split('\n').filter(Boolean);
+    } catch (err) {
+      console.error('Error fetching commit files:', err);
+      return [];
+    }
+  }
+
+  public async getFileContent(hash: string, path: string) {
+    if (!this._git) return '';
+    try {
+      return await this._git.show([`${hash}:${path}`]);
+    } catch (err) {
+      console.error(`Error fetching file content for ${hash}:${path}:`, err);
+      return '';
+    }
+  }
+
+  public async getParentHash(hash: string) {
+    if (!this._git) return undefined;
+    try {
+      const result = await this._git.raw(['rev-parse', `${hash}^`]);
+      return result.trim();
+    } catch {
+      return undefined;
+    }
+  }
+
   public async getDiff(hash?: string) {
     if (!this._git) return '';
     try {
