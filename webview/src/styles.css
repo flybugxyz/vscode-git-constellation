@@ -135,6 +135,18 @@ button {
   cursor: pointer;
 }
 
-button:hover {
-  background-color: var(--vscode-button-hoverBackground);
+.diff-container {
+  flex: 1;
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 12px;
+  overflow: auto;
+  border-top: var(--jb-border);
+  padding: 10px;
+  white-space: pre-wrap;
 }
+
+.diff-line-added { color: #50fa7b; }
+.diff-line-removed { color: #ff5555; }
+.diff-header { color: #8be9fd; font-weight: bold; }

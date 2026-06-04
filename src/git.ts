@@ -51,4 +51,18 @@ export class GitService {
       vscode.window.showErrorMessage(`Commit failed: ${err}`);
     }
   }
+
+  public async getDiff(hash?: string) {
+    if (!this._git) return '';
+    try {
+      if (hash) {
+        return await this._git.show([hash]);
+      } else {
+        return await this._git.diff();
+      }
+    } catch (err) {
+      console.error('Error fetching diff:', err);
+      return '';
+    }
+  }
 }
