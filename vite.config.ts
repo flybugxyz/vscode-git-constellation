@@ -5,6 +5,7 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   root: 'webview',
+  base: './',
   build: {
     outDir: '../dist-webview',
     emptyOutDir: true,

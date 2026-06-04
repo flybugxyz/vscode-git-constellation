@@ -186,6 +186,13 @@ button {
   background-color: var(--jb-hover);
 }
 
+.tree-icon.codicon {
+  font-family: codicon !important;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1;
+}
+
 .tree-icon {
   margin-right: 6px;
   width: 16px;
