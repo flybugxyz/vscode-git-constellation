@@ -1,0 +1,78 @@
+:root {
+  --jb-row-height: 24px;
+  --jb-header-height: 28px;
+  --jb-border: 1px solid var(--vscode-panel-border);
+  --jb-hover: var(--vscode-list-hoverBackground);
+  --jb-selected: var(--vscode-list-activeSelectionBackground);
+}
+
+body {
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.header {
+  height: var(--jb-header-height);
+  border-bottom: var(--jb-border);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  background-color: var(--vscode-sideBar-background);
+  font-size: 11px;
+}
+
+.table-container {
+  flex: 1;
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  background-color: var(--vscode-sideBar-background);
+  z-index: 10;
+}
+
+th {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: var(--jb-border);
+  border-right: var(--jb-border);
+  font-weight: normal;
+  color: var(--vscode-descriptionForeground);
+}
+
+td {
+  padding: 2px 8px;
+  height: var(--jb-row-height);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: var(--jb-border);
+}
+
+tr:hover {
+  background-color: var(--jb-hover);
+}
+
+tr.selected {
+  background-color: var(--jb-selected);
+}
+
+.graph-col { width: 100px; }
+.message-col { width: auto; }
+.author-col { width: 150px; }
+.date-col { width: 150px; }
