@@ -16,6 +16,21 @@ const COLORS = [
   '#4a9eff', '#ff5555', '#50fa7b', '#f1fa8c', '#bd93f9', '#ff79c6', '#8be9fd'
 ];
 
+// Helper for rounded rect (fallback for older environments)
+const drawRoundedRect = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) => {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+};
+
 export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -59,10 +74,10 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
       });
     });
 
-    const laneWidth = 15;
+    const laneWidth = 12; // Slightly narrower lanes
     const xOffset = 10;
     
-    // Draw lines
+    // Pass 1: Draw lines
     commits.forEach((commit, i) => {
       const y = i * rowHeight + rowHeight / 2;
       const x = xOffset + commitLanes[i] * laneWidth;
@@ -88,7 +103,7 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
       });
     });
 
-    // Draw nodes and refs
+    // Pass 2: Draw nodes and refs
     commits.forEach((commit, i) => {
       const y = i * rowHeight + rowHeight / 2;
       const x = xOffset + commitLanes[i] * laneWidth;
@@ -108,48 +123,53 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
       // Draw Labels (Refs)
       if (commit.refs) {
         const refsArray = commit.refs.split(',').map(r => r.trim());
-        let currentLabelX = xOffset + activeLanes.length * laneWidth + 10;
+        // Position labels after the node, based on the node's own lane
+        let currentLabelX = x + 15;
 
-        ctx.font = '10px sans-serif';
+        ctx.font = '11px sans-serif';
         refsArray.forEach(ref => {
           const isTag = ref.startsWith('tag: ');
           const labelText = isTag ? ref.replace('tag: ', '') : ref;
           
           const textWidth = ctx.measureText(labelText).width;
-          const padding = 4;
+          const padding = 6;
           const labelWidth = textWidth + padding * 2;
 
           // Background
-          ctx.fillStyle = isTag ? '#4e4e10' : '#2d4a2d'; // Dark gold for tag, dark green for branch
-          if (ref.includes('HEAD')) ctx.fillStyle = '#1e3a5f'; // Dark blue for HEAD
+          if (ref.includes('HEAD')) {
+            ctx.fillStyle = '#1e3a5f'; // Dark blue for HEAD
+            ctx.strokeStyle = '#6ab0f3';
+          } else if (isTag) {
+            ctx.fillStyle = '#4e4e10'; // Dark gold for tag
+            ctx.strokeStyle = '#e2c08d';
+          } else if (ref.includes('/')) {
+            ctx.fillStyle = '#3b2d4a'; // Purple for remote
+            ctx.strokeStyle = '#c09efd';
+          } else {
+            ctx.fillStyle = '#2d4a2d'; // Dark green for local branch
+            ctx.strokeStyle = '#85e89d';
+          }
           
-          ctx.roundRect?.(currentLabelX, y - 7, labelWidth, 14, 3);
+          drawRoundedRect(ctx, currentLabelX, y - 8, labelWidth, 16, 4);
           ctx.fill();
-
-          // Border
-          ctx.strokeStyle = isTag ? '#e2c08d' : '#85e89d';
-          if (ref.includes('HEAD')) ctx.strokeStyle = '#6ab0f3';
           ctx.stroke();
 
           // Text
-          ctx.fillStyle = 'white';
-          ctx.fillText(labelText, currentLabelX + padding, y + 3);
+          ctx.fillStyle = '#ffffff'; // Explicitly set to pure white
+          ctx.textBaseline = 'middle';
+          ctx.fillText(labelText, currentLabelX + padding, y + 1); // Small adjustment for baseline
 
-          currentLabelX += labelWidth + 5;
+          currentLabelX += labelWidth + 6;
         });
       }
     });
 
   }, [commits, rowHeight]);
 
-  // Adjust width based on lanes and refs
-  const maxLanes = 10; // Simple estimate
-  const width = 200 + maxLanes * 15;
-
   return (
     <canvas 
       ref={canvasRef} 
-      width={width} 
+      width={400} 
       height={commits.length * rowHeight}
       style={{ verticalAlign: 'top' }}
     />
