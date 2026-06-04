@@ -148,13 +148,54 @@ button {
 }
 
 .side-pane {
-  width: 250px;
+  width: 300px;
   border-left: var(--jb-border);
   background-color: var(--vscode-sideBar-background);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
+
+.file-tree-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  border-bottom: var(--jb-border);
+}
+
+.commit-details {
+  height: 200px;
+  overflow-y: auto;
+  padding: 10px;
+  font-size: 11px;
+  background-color: var(--vscode-panel-background);
+}
+
+.detail-row {
+  margin-bottom: 8px;
+}
+
+.detail-label {
+  color: var(--vscode-descriptionForeground);
+  margin-right: 8px;
+  min-width: 60px;
+  display: inline-block;
+}
+
+.detail-value {
+  color: var(--vscode-foreground);
+}
+
+.label-pill {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-right: 4px;
+  font-size: 10px;
+  border: 1px solid transparent;
+}
+
+.label-branch { background-color: #2d4a2d; color: #85e89d; border-color: #85e89d; }
+.label-tag { background-color: #4e4e10; color: #e2c08d; border-color: #e2c08d; }
+.label-remote { background-color: #3b2d4a; color: #c09efd; border-color: #c09efd; }
 
 .side-pane-header {
   padding: 4px 8px;

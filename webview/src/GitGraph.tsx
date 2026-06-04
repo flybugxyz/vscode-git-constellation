@@ -4,6 +4,7 @@ interface Commit {
   hash: string;
   parents: string[];
   message: string;
+  refs: string;
 }
 
 interface GraphProps {
@@ -28,17 +29,13 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const laneMap = new Map<string, number>();
-    let nextLane = 0;
-    const commitLanes: number[] = [];
     const activeLanes: (string | null)[] = [];
+    const commitLanes: number[] = [];
 
     // Calculate lanes
     commits.forEach((commit, i) => {
-      // Find a lane for this commit
       let laneIndex = activeLanes.indexOf(commit.hash);
       if (laneIndex === -1) {
-        // Find empty slot or push new
         laneIndex = activeLanes.indexOf(null);
         if (laneIndex === -1) {
           laneIndex = activeLanes.length;
@@ -49,8 +46,7 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
       }
       commitLanes[i] = laneIndex;
 
-      // Update active lanes for children
-      activeLanes[laneIndex] = null; // Remove current
+      activeLanes[laneIndex] = null;
       commit.parents.forEach(parentHash => {
         if (activeLanes.indexOf(parentHash) === -1) {
           const emptySlot = activeLanes.indexOf(null);
@@ -63,21 +59,15 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
       });
     });
 
-    // Draw lines
     const laneWidth = 15;
     const xOffset = 10;
     
-    // Pass 1: Draw lines between commits
-    activeLanes.fill(null);
-    const currentActiveLanes: {hash: string, lane: number}[] = [];
-
+    // Draw lines
     commits.forEach((commit, i) => {
       const y = i * rowHeight + rowHeight / 2;
       const x = xOffset + commitLanes[i] * laneWidth;
 
-      // Draw lines to parents
       commit.parents.forEach(parentHash => {
-        // Find if parent is in next few commits
         const parentIdx = commits.findIndex((c, idx) => idx > i && c.hash === parentHash);
         if (parentIdx !== -1) {
           const targetY = parentIdx * rowHeight + rowHeight / 2;
@@ -88,7 +78,6 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
           ctx.lineWidth = 2;
           ctx.moveTo(x, y);
           
-          // Draw a nice curve or angled line
           if (x === targetX) {
             ctx.lineTo(targetX, targetY);
           } else {
@@ -99,30 +88,68 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
       });
     });
 
-    // Pass 2: Draw nodes
+    // Draw nodes and refs
     commits.forEach((commit, i) => {
       const y = i * rowHeight + rowHeight / 2;
       const x = xOffset + commitLanes[i] * laneWidth;
 
+      // Draw node
       ctx.beginPath();
       ctx.fillStyle = COLORS[commitLanes[i] % COLORS.length];
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fill();
       
-      // Outer circle for better visibility
       ctx.beginPath();
       ctx.strokeStyle = 'white';
       ctx.lineWidth = 1;
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Draw Labels (Refs)
+      if (commit.refs) {
+        const refsArray = commit.refs.split(',').map(r => r.trim());
+        let currentLabelX = xOffset + activeLanes.length * laneWidth + 10;
+
+        ctx.font = '10px sans-serif';
+        refsArray.forEach(ref => {
+          const isTag = ref.startsWith('tag: ');
+          const labelText = isTag ? ref.replace('tag: ', '') : ref;
+          
+          const textWidth = ctx.measureText(labelText).width;
+          const padding = 4;
+          const labelWidth = textWidth + padding * 2;
+
+          // Background
+          ctx.fillStyle = isTag ? '#4e4e10' : '#2d4a2d'; // Dark gold for tag, dark green for branch
+          if (ref.includes('HEAD')) ctx.fillStyle = '#1e3a5f'; // Dark blue for HEAD
+          
+          ctx.roundRect?.(currentLabelX, y - 7, labelWidth, 14, 3);
+          ctx.fill();
+
+          // Border
+          ctx.strokeStyle = isTag ? '#e2c08d' : '#85e89d';
+          if (ref.includes('HEAD')) ctx.strokeStyle = '#6ab0f3';
+          ctx.stroke();
+
+          // Text
+          ctx.fillStyle = 'white';
+          ctx.fillText(labelText, currentLabelX + padding, y + 3);
+
+          currentLabelX += labelWidth + 5;
+        });
+      }
     });
 
   }, [commits, rowHeight]);
 
+  // Adjust width based on lanes and refs
+  const maxLanes = 10; // Simple estimate
+  const width = 200 + maxLanes * 15;
+
   return (
     <canvas 
       ref={canvasRef} 
-      width={150} 
+      width={width} 
       height={commits.length * rowHeight}
       style={{ verticalAlign: 'top' }}
     />

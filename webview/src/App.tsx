@@ -72,6 +72,23 @@ function App() {
     }
   };
 
+  const selectedCommit = selectedIndex >= 0 ? gitData?.log?.all[selectedIndex] : null;
+
+  const renderRefs = (refs: string) => {
+    if (!refs) return null;
+    return refs.split(',').map(r => r.trim()).map(ref => {
+      let type = 'branch';
+      let label = ref;
+      if (ref.startsWith('tag: ')) {
+        type = 'tag';
+        label = ref.replace('tag: ', '');
+      } else if (ref.includes('/')) {
+        type = 'remote';
+      }
+      return <span key={ref} className={`label-pill label-${type}`}>{label}</span>;
+    });
+  };
+
   return (
     <div className="container">
       <div className="tabs">
@@ -116,7 +133,7 @@ function App() {
                 <table>
                   <thead>
                     <tr>
-                      <th style={{ width: '150px' }}>Graph</th>
+                      <th style={{ width: '250px' }}>Graph & Labels</th>
                       <th>Description</th>
                       <th style={{ width: '150px' }}>Author</th>
                       <th style={{ width: '150px' }}>Date</th>
@@ -129,7 +146,7 @@ function App() {
                         className={selectedIndex === idx ? 'selected' : ''}
                         onClick={() => handleSelectCommit(idx, commit.hash)}
                       >
-                        <td style={{ width: '150px' }}></td>
+                        <td style={{ width: '250px' }}></td>
                         <td title={commit.message}>{commit.message}</td>
                         <td>{commit.author_name}</td>
                         <td>{formatDate(commit.date)}</td>
@@ -143,11 +160,35 @@ function App() {
             {selectedIndex >= 0 && (
               <div className="side-pane">
                 <div className="side-pane-header">Changed Files</div>
-                {selectedCommitFiles ? (
-                  <FileTree files={selectedCommitFiles.files} onFileClick={handleFileClick} />
-                ) : (
-                  <div style={{ padding: '10px', fontSize: '11px' }}>Loading files...</div>
-                )}
+                <div className="file-tree-wrapper">
+                  {selectedCommitFiles ? (
+                    <FileTree files={selectedCommitFiles.files} onFileClick={handleFileClick} />
+                  ) : (
+                    <div style={{ padding: '10px', fontSize: '11px' }}>Loading files...</div>
+                  )}
+                </div>
+                <div className="side-pane-header">Commit Details</div>
+                <div className="commit-details">
+                  <div className="detail-row">
+                    <b>{selectedCommit?.message}</b>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Commit:</span>
+                    <span className="detail-value">{selectedCommit?.hash.substring(0, 8)}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Author:</span>
+                    <span className="detail-value">{selectedCommit?.author_name} &lt;{selectedCommit?.author_email}&gt;</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Date:</span>
+                    <span className="detail-value">{formatDate(selectedCommit?.date)}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Labels:</span>
+                    <span className="detail-value">{renderRefs(selectedCommit?.refs)}</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
