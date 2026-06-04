@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface FileInfo {
   status: string;
@@ -59,6 +59,19 @@ const getFileIconClass = (fileName: string): string => {
 
 export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const allDirs = new Set<string>();
+    files.forEach(file => {
+      const parts = file.path.split('/');
+      let currentPath = '';
+      for (let i = 0; i < parts.length - 1; i++) {
+        currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+        allDirs.add(currentPath);
+      }
+    });
+    setExpandedNodes(allDirs);
+  }, [files]);
 
   const buildTree = (fileList: FileInfo[]): TreeNode => {
     const root: TreeNode = { name: '', fullPath: '', children: {}, isFile: false };
