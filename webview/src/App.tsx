@@ -34,8 +34,12 @@ function App() {
   }, []);
 
   const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const timestamp = parseInt(dateStr);
+    if (isNaN(timestamp)) return dateStr;
+    
     try {
-      return new Date(dateStr).toLocaleString([], {
+      return new Date(timestamp * 1000).toLocaleString([], {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',

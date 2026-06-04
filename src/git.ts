@@ -25,12 +25,12 @@ export class GitService {
         'log',
         '--max-count=100',
         '--all',
-        '--format=%H|%P|%D|%s|%an|%at'
+        '--format=%H%x09%P%x09%D%x09%s%x09%an%x09%at'
       ]);
       
       const lines = result.trim().split('\n');
       const commits = lines.map(line => {
-        const [hash, parents, refs, message, author, date] = line.split('|');
+        const [hash, parents, refs, message, author, date] = line.split('\t');
         return {
           hash,
           parents: parents ? parents.split(' ') : [],
