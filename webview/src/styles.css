@@ -203,6 +203,19 @@ button {
   font-size: 11px;
   color: var(--vscode-descriptionForeground);
   background-color: var(--vscode-panel-background);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.side-pane-header:hover {
+  background-color: var(--jb-hover);
+}
+
+.header-chevron {
+  margin-right: 4px;
+  font-size: 10px !important;
 }
 
 .tree-node {

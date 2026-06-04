@@ -13,6 +13,10 @@ function App() {
   const [commitMessage, setCommitMessage] = useState('');
   const [showBranches, setShowBranches] = useState(false);
   const [selectedCommitFiles, setSelectedCommitFiles] = useState<{hash: string, files: {status: string, path: string}[]} | null>(null);
+  
+  // Collapse states for side pane sections
+  const [filesExpanded, setFilesExpanded] = useState(true);
+  const [detailsExpanded, setDetailsExpanded] = useState(true);
 
   useEffect(() => {
     vscode.postMessage({ type: 'ready' });
@@ -159,36 +163,47 @@ function App() {
             
             {selectedIndex >= 0 && (
               <div className="side-pane">
-                <div className="side-pane-header">Changed Files</div>
-                <div className="file-tree-wrapper">
-                  {selectedCommitFiles ? (
-                    <FileTree files={selectedCommitFiles.files} onFileClick={handleFileClick} />
-                  ) : (
-                    <div style={{ padding: '10px', fontSize: '11px' }}>Loading files...</div>
-                  )}
+                <div className="side-pane-header" onClick={() => setFilesExpanded(!filesExpanded)}>
+                  <span className={`header-chevron codicon ${filesExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right'}`}></span>
+                  Changed Files
                 </div>
-                <div className="side-pane-header">Commit Details</div>
-                <div className="commit-details">
-                  <div className="detail-row">
-                    <b>{selectedCommit?.message}</b>
+                {filesExpanded && (
+                  <div className="file-tree-wrapper">
+                    {selectedCommitFiles ? (
+                      <FileTree files={selectedCommitFiles.files} onFileClick={handleFileClick} />
+                    ) : (
+                      <div style={{ padding: '10px', fontSize: '11px' }}>Loading files...</div>
+                    )}
                   </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Commit:</span>
-                    <span className="detail-value">{selectedCommit?.hash.substring(0, 8)}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Author:</span>
-                    <span className="detail-value">{selectedCommit?.author_name} &lt;{selectedCommit?.author_email}&gt;</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Date:</span>
-                    <span className="detail-value">{formatDate(selectedCommit?.date)}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Labels:</span>
-                    <span className="detail-value">{renderRefs(selectedCommit?.refs)}</span>
-                  </div>
+                )}
+                
+                <div className="side-pane-header" onClick={() => setDetailsExpanded(!detailsExpanded)}>
+                  <span className={`header-chevron codicon ${detailsExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right'}`}></span>
+                  Commit Details
                 </div>
+                {detailsExpanded && (
+                  <div className="commit-details">
+                    <div className="detail-row">
+                      <b>{selectedCommit?.message}</b>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Commit:</span>
+                      <span className="detail-value">{selectedCommit?.hash.substring(0, 8)}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Author:</span>
+                      <span className="detail-value">{selectedCommit?.author_name} &lt;{selectedCommit?.author_email}&gt;</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Date:</span>
+                      <span className="detail-value">{formatDate(selectedCommit?.date)}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Labels:</span>
+                      <span className="detail-value">{renderRefs(selectedCommit?.refs)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
