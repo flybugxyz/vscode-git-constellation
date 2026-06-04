@@ -16,7 +16,7 @@ const COLORS = [
   '#4a9eff', '#ff5555', '#50fa7b', '#f1fa8c', '#bd93f9', '#ff79c6', '#8be9fd'
 ];
 
-// Helper for rounded rect (fallback for older environments)
+// Helper for rounded rect
 const drawRoundedRect = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) => {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -41,8 +41,25 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // --- High DPI Handling ---
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = 400;
+    const displayHeight = commits.length * rowHeight;
+    
+    // Set actual size in memory
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
+    
+    // Set display size in CSS
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
+    
+    // Scale all drawing operations by dpr
+    ctx.scale(dpr, dpr);
+    // -------------------------
+
     // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, displayWidth, displayHeight);
 
     const activeLanes: (string | null)[] = [];
     const commitLanes: number[] = [];
@@ -74,7 +91,7 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
       });
     });
 
-    const laneWidth = 12; // Slightly narrower lanes
+    const laneWidth = 12;
     const xOffset = 10;
     
     // Pass 1: Draw lines
@@ -123,7 +140,6 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
       // Draw Labels (Refs)
       if (commit.refs) {
         const refsArray = commit.refs.split(',').map(r => r.trim());
-        // Position labels after the node, based on the node's own lane
         let currentLabelX = x + 15;
 
         ctx.font = '11px sans-serif';
@@ -135,18 +151,17 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
           const padding = 6;
           const labelWidth = textWidth + padding * 2;
 
-          // Background
           if (ref.includes('HEAD')) {
-            ctx.fillStyle = '#1e3a5f'; // Dark blue for HEAD
+            ctx.fillStyle = '#1e3a5f';
             ctx.strokeStyle = '#6ab0f3';
           } else if (isTag) {
-            ctx.fillStyle = '#4e4e10'; // Dark gold for tag
+            ctx.fillStyle = '#4e4e10';
             ctx.strokeStyle = '#e2c08d';
           } else if (ref.includes('/')) {
-            ctx.fillStyle = '#3b2d4a'; // Purple for remote
+            ctx.fillStyle = '#3b2d4a';
             ctx.strokeStyle = '#c09efd';
           } else {
-            ctx.fillStyle = '#2d4a2d'; // Dark green for local branch
+            ctx.fillStyle = '#2d4a2d';
             ctx.strokeStyle = '#85e89d';
           }
           
@@ -154,10 +169,9 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
           ctx.fill();
           ctx.stroke();
 
-          // Text
-          ctx.fillStyle = '#ffffff'; // Explicitly set to pure white
+          ctx.fillStyle = '#ffffff';
           ctx.textBaseline = 'middle';
-          ctx.fillText(labelText, currentLabelX + padding, y + 1); // Small adjustment for baseline
+          ctx.fillText(labelText, currentLabelX + padding, y + 1);
 
           currentLabelX += labelWidth + 6;
         });
@@ -169,8 +183,6 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
   return (
     <canvas 
       ref={canvasRef} 
-      width={400} 
-      height={commits.length * rowHeight}
       style={{ verticalAlign: 'top' }}
     />
   );
