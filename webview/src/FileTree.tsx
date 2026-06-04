@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface FileInfo {
   status: string;
@@ -58,6 +58,8 @@ const getFileIconClass = (fileName: string): string => {
 };
 
 export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+
   const buildTree = (fileList: FileInfo[]): TreeNode => {
     const root: TreeNode = { name: '', fullPath: '', children: {}, isFile: false };
     
@@ -84,6 +86,17 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
     return root;
   };
 
+  const toggleNode = (fullPath: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newExpanded = new Set(expandedNodes);
+    if (newExpanded.has(fullPath)) {
+      newExpanded.delete(fullPath);
+    } else {
+      newExpanded.add(fullPath);
+    }
+    setExpandedNodes(newExpanded);
+  };
+
   const getStatusClass = (status?: string) => {
     switch (status) {
       case 'A': return 'status-added';
@@ -94,7 +107,7 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
     }
   };
 
-  const renderNodes = (nodes: { [key: string]: TreeNode }) => {
+  const renderNodes = (nodes: { [key: string]: TreeNode }, depth: number = 0) => {
     const sortedKeys = Object.keys(nodes).sort((a, b) => {
       if (nodes[a].isFile !== nodes[b].isFile) {
         return nodes[a].isFile ? 1 : -1;
@@ -104,18 +117,27 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
 
     return sortedKeys.map(key => {
       const node = nodes[key];
+      const isExpanded = expandedNodes.has(node.fullPath);
+      const hasChildren = Object.keys(node.children).length > 0;
+
       return (
-        <div key={node.fullPath} className="tree-node">
+        <div key={node.fullPath} className="tree-node-container">
           <div 
             className={`tree-item ${getStatusClass(node.status)}`} 
-            onClick={() => node.isFile && onFileClick(node.fullPath)}
+            style={{ paddingLeft: `${depth * 12}px` }}
+            onClick={() => node.isFile ? onFileClick(node.fullPath) : toggleNode(node.fullPath, {} as any)}
           >
-            <span className={`tree-icon codicon ${node.isFile ? getFileIconClass(node.name) : 'codicon-folder'}`}>
+            <span 
+              className={`tree-chevron codicon ${!node.isFile && hasChildren ? (isExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right') : ''}`}
+              style={{ width: '16px', visibility: !node.isFile && hasChildren ? 'visible' : 'hidden' }}
+              onClick={(e) => !node.isFile && toggleNode(node.fullPath, e)}
+            ></span>
+            <span className={`tree-icon codicon ${node.isFile ? getFileIconClass(node.name) : (isExpanded ? 'codicon-folder-opened' : 'codicon-folder')}`}>
             </span>
-            {node.name}
-            {node.status && <span style={{ marginLeft: 'auto', fontSize: '9px', opacity: 0.6 }}>{node.status}</span>}
+            <span className="tree-name">{node.name}</span>
+            {node.status && <span style={{ marginLeft: 'auto', fontSize: '9px', opacity: 0.6, paddingRight: '4px' }}>{node.status}</span>}
           </div>
-          {!node.isFile && renderNodes(node.children)}
+          {!node.isFile && isExpanded && renderNodes(node.children, depth + 1)}
         </div>
       );
     });
