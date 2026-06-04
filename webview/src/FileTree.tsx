@@ -1,7 +1,12 @@
 import React from 'react';
 
+interface FileInfo {
+  status: string;
+  path: string;
+}
+
 interface FileTreeProps {
-  files: string[];
+  files: FileInfo[];
   onFileClick: (path: string) => void;
 }
 
@@ -10,6 +15,7 @@ interface TreeNode {
   fullPath: string;
   children: { [key: string]: TreeNode };
   isFile: boolean;
+  status?: string;
 }
 
 const getFileIcon = (fileName: string): string => {
@@ -50,11 +56,11 @@ const getFileIcon = (fileName: string): string => {
 };
 
 export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
-  const buildTree = (fileList: string[]): TreeNode => {
+  const buildTree = (fileList: FileInfo[]): TreeNode => {
     const root: TreeNode = { name: '', fullPath: '', children: {}, isFile: false };
     
-    fileList.forEach(path => {
-      const parts = path.split('/');
+    fileList.forEach(file => {
+      const parts = file.path.split('/');
       let current = root;
       let currentPath = '';
       
@@ -65,7 +71,8 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
             name: part,
             fullPath: currentPath,
             children: {},
-            isFile: index === parts.length - 1
+            isFile: index === parts.length - 1,
+            status: index === parts.length - 1 ? file.status : undefined
           };
         }
         current = current.children[part];
@@ -73,6 +80,16 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
     });
     
     return root;
+  };
+
+  const getStatusClass = (status?: string) => {
+    switch (status) {
+      case 'A': return 'status-added';
+      case 'M': return 'status-modified';
+      case 'D': return 'status-deleted';
+      case 'R': return 'status-renamed';
+      default: return '';
+    }
   };
 
   const renderNodes = (nodes: { [key: string]: TreeNode }) => {
@@ -87,11 +104,15 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
       const node = nodes[key];
       return (
         <div key={node.fullPath} className="tree-node">
-          <div className="tree-item" onClick={() => node.isFile && onFileClick(node.fullPath)}>
+          <div 
+            className={`tree-item ${getStatusClass(node.status)}`} 
+            onClick={() => node.isFile && onFileClick(node.fullPath)}
+          >
             <span className="tree-icon">
               {node.isFile ? getFileIcon(node.name) : '📁'}
             </span>
             {node.name}
+            {node.status && <span style={{ marginLeft: 'auto', fontSize: '9px', opacity: 0.6 }}>{node.status}</span>}
           </div>
           {!node.isFile && renderNodes(node.children)}
         </div>

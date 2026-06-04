@@ -12,7 +12,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<'log' | 'local'>('log');
   const [commitMessage, setCommitMessage] = useState('');
   const [showBranches, setShowBranches] = useState(false);
-  const [selectedCommitFiles, setSelectedCommitFiles] = useState<{hash: string, files: string[]} | null>(null);
+  const [selectedCommitFiles, setSelectedCommitFiles] = useState<{hash: string, files: {status: string, path: string}[]} | null>(null);
 
   useEffect(() => {
     vscode.postMessage({ type: 'ready' });

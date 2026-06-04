@@ -82,9 +82,12 @@ export class GitService {
   public async getCommitFiles(hash: string) {
     if (!this._git) return [];
     try {
-      // Get list of files modified in this commit
-      const result = await this._git.raw(['show', '--name-only', '--pretty=format:', hash]);
-      return result.trim().split('\n').filter(Boolean);
+      // Get list of files with status (A: Added, M: Modified, D: Deleted, etc.)
+      const result = await this._git.raw(['show', '--name-status', '--pretty=format:', hash]);
+      return result.trim().split('\n').filter(Boolean).map(line => {
+        const [status, path] = line.split(/\s+/);
+        return { status, path };
+      });
     } catch (err) {
       console.error('Error fetching commit files:', err);
       return [];

@@ -169,6 +169,11 @@ button {
   font-size: 12px;
 }
 
+.status-added { color: #50fa7b; }
+.status-modified { color: #4a9eff; }
+.status-deleted { color: #ff5555; text-decoration: line-through; }
+.status-renamed { color: #bd93f9; }
+
 .tree-item {
   display: flex;
   align-items: center;
