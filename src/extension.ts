@@ -46,6 +46,10 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
         case 'ready':
           this.refresh();
           break;
+        case 'commit':
+          await this._gitService.commit(data.message);
+          this.refresh();
+          break;
       }
     });
   }

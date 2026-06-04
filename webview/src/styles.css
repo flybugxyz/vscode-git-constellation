@@ -72,7 +72,69 @@ tr.selected {
   background-color: var(--jb-selected);
 }
 
-.graph-col { width: 100px; }
-.message-col { width: auto; }
-.author-col { width: 150px; }
-.date-col { width: 150px; }
+.tabs {
+  display: flex;
+  background-color: var(--vscode-sideBar-background);
+  border-bottom: var(--jb-border);
+}
+
+.tab {
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 11px;
+  border-right: var(--jb-border);
+  color: var(--vscode-descriptionForeground);
+}
+
+.tab.active {
+  background-color: var(--vscode-panel-background);
+  color: var(--vscode-foreground);
+  border-bottom: 2px solid var(--vscode-panelTitle-activeBorder);
+}
+
+.tab:hover {
+  background-color: var(--jb-hover);
+}
+
+.local-changes-container {
+  padding: 10px;
+  font-size: 12px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+}
+
+.file-item:hover {
+  background-color: var(--jb-hover);
+}
+
+.commit-box {
+  margin-top: 20px;
+  padding: 10px;
+  border-top: var(--jb-border);
+}
+
+textarea {
+  width: 100%;
+  height: 60px;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  resize: vertical;
+  margin-bottom: 10px;
+}
+
+button {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}

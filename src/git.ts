@@ -41,4 +41,14 @@ export class GitService {
       return undefined;
     }
   }
+
+  public async commit(message: string) {
+    if (!this._git) return;
+    try {
+      await this._git.add('.');
+      return await this._git.commit(message);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Commit failed: ${err}`);
+    }
+  }
 }
