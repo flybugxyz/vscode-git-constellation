@@ -10,6 +10,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<'log' | 'local'>('log');
   const [commitMessage, setCommitMessage] = useState('');
   const [diff, setDiff] = useState<string>('');
+  const [showBranches, setShowBranches] = useState(false);
 
   useEffect(() => {
     vscode.postMessage({ type: 'ready' });
@@ -51,6 +52,11 @@ function App() {
     vscode.postMessage({ type: 'getDiff', hash });
   };
 
+  const handleCheckout = (branch: string) => {
+    vscode.postMessage({ type: 'checkout', branch });
+    setShowBranches(false);
+  };
+
   const renderDiff = (diffText: string) => {
     return diffText.split('\n').map((line, i) => {
       let className = '';
@@ -75,7 +81,25 @@ function App() {
         {activeTab === 'log' ? (
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
             <div className="header">
-              {gitData?.branches?.current && <span>Branch: <b>{gitData.branches.current}</b></span>}
+              <button 
+                style={{ background: 'none', border: '1px solid var(--vscode-panel-border)', padding: '2px 8px', fontSize: '10px' }}
+                onClick={() => setShowBranches(!showBranches)}
+              >
+                {gitData?.branches?.current || 'Branches'} ▾
+              </button>
+              {showBranches && (
+                <div className="branch-popup">
+                  {gitData?.branches?.all.map((b: string) => (
+                    <div 
+                      key={b} 
+                      className={`branch-item ${b === gitData.branches.current ? 'current' : ''}`}
+                      onClick={() => handleCheckout(b)}
+                    >
+                      {b}
+                    </div>
+                  ))}
+                </div>
+              )}
               <span style={{ marginLeft: '20px' }}>{gitData?.log?.all.length || 0} commits</span>
             </div>
             <div className="table-container" style={{ flex: selectedIndex >= 0 ? 1 : 2 }}>

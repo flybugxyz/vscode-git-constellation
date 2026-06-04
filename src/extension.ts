@@ -54,6 +54,10 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           const diff = await this._gitService.getDiff(data.hash);
           this._view?.webview.postMessage({ type: 'diff', diff });
           break;
+        case 'checkout':
+          await this._gitService.checkout(data.branch);
+          this.refresh();
+          break;
       }
     });
   }

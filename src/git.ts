@@ -65,4 +65,13 @@ export class GitService {
       return '';
     }
   }
+
+  public async checkout(branch: string) {
+    if (!this._git) return;
+    try {
+      await this._git.checkout(branch);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Checkout failed: ${err}`);
+    }
+  }
 }
