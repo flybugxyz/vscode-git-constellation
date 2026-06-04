@@ -7,15 +7,42 @@ export class GitService {
 
   constructor() {
     this._workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    console.log('GitService initialized with workspace root:', this._workspaceRoot);
     if (this._workspaceRoot) {
       this._git = simpleGit(this._workspaceRoot);
     }
   }
 
-  public async getLog(): Promise<LogResult<DefaultLogFields> | undefined> {
-    if (!this._git) return undefined;
+  public async getLog(): Promise<any | undefined> {
+    if (!this._git) {
+      console.log('GitService: No git instance available');
+      return undefined;
+    }
     try {
-      return await this._git.log(['--max-count=100', '--graph', '--all', '--format=%H%d%s%an%ae%at']);
+      console.log('GitService: Fetching log with parents...');
+      // Use raw log to get custom format including parents (%P) and refs (%D)
+      const result = await this._git.raw([
+        'log',
+        '--max-count=100',
+        '--all',
+        '--format=%H|%P|%D|%s|%an|%at'
+      ]);
+      
+      const lines = result.trim().split('\n');
+      const commits = lines.map(line => {
+        const [hash, parents, refs, message, author, date] = line.split('|');
+        return {
+          hash,
+          parents: parents ? parents.split(' ') : [],
+          refs: refs || '',
+          message,
+          author_name: author,
+          date
+        };
+      });
+
+      console.log(`GitService: Found ${commits.length} commits`);
+      return { all: commits };
     } catch (err) {
       console.error('Error fetching git log:', err);
       return undefined;

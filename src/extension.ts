@@ -63,15 +63,24 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   }
 
   public async refresh() {
+    console.log('GitJBViewProvider: Refreshing...');
     if (this._view) {
-      const log = await this._gitService.getLog();
-      const status = await this._gitService.getStatus();
-      const branches = await this._gitService.getBranches();
+      try {
+        const log = await this._gitService.getLog();
+        const status = await this._gitService.getStatus();
+        const branches = await this._gitService.getBranches();
 
-      this._view.webview.postMessage({
-        type: 'update',
-        payload: { log, status, branches }
-      });
+        console.log(`GitJBViewProvider: Sending update to webview. Log: ${log?.all.length || 0} commits`);
+        
+        this._view.webview.postMessage({
+          type: 'update',
+          payload: { log, status, branches }
+        });
+      } catch (err) {
+        console.error('GitJBViewProvider: Error during refresh:', err);
+      }
+    } else {
+      console.log('GitJBViewProvider: No view available to refresh');
     }
   }
 

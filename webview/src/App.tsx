@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './styles.css';
+import { GitGraph } from './GitGraph';
 
 declare const acquireVsCodeApi: any;
 const vscode = acquireVsCodeApi();
@@ -17,6 +18,7 @@ function App() {
 
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
+      console.log('Webview received message:', message);
       switch (message.type) {
         case 'update':
           setGitData(message.payload);
@@ -31,13 +33,17 @@ function App() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleString([], {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return dateStr;
+    }
   };
 
   const handleCommit = () => {
@@ -102,34 +108,39 @@ function App() {
               )}
               <span style={{ marginLeft: '20px' }}>{gitData?.log?.all.length || 0} commits</span>
             </div>
-            <div className="table-container" style={{ flex: selectedIndex >= 0 ? 1 : 2 }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th style={{ width: '100px' }}>Graph</th>
-                    <th>Description</th>
-                    <th style={{ width: '150px' }}>Author</th>
-                    <th style={{ width: '150px' }}>Date</th>
+          <div className="table-container" style={{ flex: selectedIndex >= 0 ? 1 : 2, position: 'relative' }}>
+            {gitData?.log?.all && (
+              <div style={{ position: 'absolute', top: '28px', left: 0, pointerEvents: 'none', zIndex: 5 }}>
+                <GitGraph commits={gitData.log.all} rowHeight={24} />
+              </div>
+            )}
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ width: '150px' }}>Graph</th>
+                  <th>Description</th>
+                  <th style={{ width: '150px' }}>Author</th>
+                  <th style={{ width: '150px' }}>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gitData?.log?.all.map((commit: any, idx: number) => (
+                  <tr 
+                    key={commit.hash} 
+                    className={selectedIndex === idx ? 'selected' : ''}
+                    onClick={() => handleSelectCommit(idx, commit.hash)}
+                  >
+                    <td style={{ width: '150px' }}>
+                      {/* Space for absolute positioned graph */}
+                    </td>
+                    <td title={commit.message}>{commit.message}</td>
+                    <td>{commit.author_name}</td>
+                    <td>{formatDate(commit.date)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {gitData?.log?.all.map((commit: any, idx: number) => (
-                    <tr 
-                      key={commit.hash} 
-                      className={selectedIndex === idx ? 'selected' : ''}
-                      onClick={() => handleSelectCommit(idx, commit.hash)}
-                    >
-                      <td>
-                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#4a9eff', margin: 'auto' }}></div>
-                      </td>
-                      <td title={commit.message}>{commit.message}</td>
-                      <td>{commit.author_name}</td>
-                      <td>{formatDate(parseInt(commit.date))}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
             {selectedIndex >= 0 && (
               <div className="diff-container">
                 {renderDiff(diff)}
