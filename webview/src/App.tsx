@@ -16,6 +16,7 @@ function App() {
   
   const [filesExpanded, setFilesExpanded] = useState(true);
   const [detailsExpanded, setDetailsExpanded] = useState(true);
+  const [graphWidth, setGraphWidth] = useState(100);
 
   useEffect(() => {
     vscode.postMessage({ type: 'ready' });
@@ -130,13 +131,17 @@ function App() {
               <div className="table-container" style={{ flex: 1, position: 'relative' }}>
                 {gitData?.log?.all && (
                   <div style={{ position: 'absolute', top: '28px', left: 0, pointerEvents: 'none', zIndex: 5 }}>
-                    <GitGraph commits={gitData.log.all} rowHeight={24} />
+                    <GitGraph 
+                      commits={gitData.log.all} 
+                      rowHeight={24} 
+                      onWidthChange={setGraphWidth}
+                    />
                   </div>
                 )}
                 <table>
                   <thead>
                     <tr>
-                      <th style={{ width: '100px' }}>Graph</th>
+                      <th style={{ width: `${graphWidth}px` }}>Graph</th>
                       <th>Description</th>
                       <th style={{ width: '150px' }}>Author</th>
                       <th style={{ width: '150px' }}>Date</th>
@@ -149,7 +154,7 @@ function App() {
                         className={selectedIndex === idx ? 'selected' : ''}
                         onClick={() => handleSelectCommit(idx, commit.hash)}
                       >
-                        <td style={{ width: '100px' }}></td>
+                        <td style={{ width: `${graphWidth}px` }}></td>
                         <td title={commit.message}>
                           <div style={{ display: 'flex', alignItems: 'center' }}>
                             <div style={{ display: 'flex', flexWrap: 'nowrap', marginRight: '8px' }}>

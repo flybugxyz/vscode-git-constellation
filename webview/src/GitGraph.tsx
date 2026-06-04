@@ -9,13 +9,14 @@ interface Commit {
 interface GraphProps {
   commits: Commit[];
   rowHeight: number;
+  onWidthChange?: (width: number) => void;
 }
 
 const COLORS = [
   '#4a9eff', '#ff5555', '#50fa7b', '#f1fa8c', '#bd93f9', '#ff79c6', '#8be9fd'
 ];
 
-export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
+export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChange }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
 
     const activeLanes: (string | null)[] = [];
     const commitLanes: number[] = [];
+    let maxLanesCount = 0;
 
     // Calculate lanes
     commits.forEach((commit, i) => {
@@ -41,6 +43,7 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
         }
       }
       commitLanes[i] = laneIndex;
+      maxLanesCount = Math.max(maxLanesCount, activeLanes.length);
 
       activeLanes[laneIndex] = null;
       commit.parents.forEach(parentHash => {
@@ -53,16 +56,22 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight }) => {
           }
         }
       });
+      maxLanesCount = Math.max(maxLanesCount, activeLanes.length);
     });
 
     const laneWidth = 12;
     const xOffset = 10;
     const dpr = window.devicePixelRatio || 1;
     
-    // We only need enough width for the lanes
-    const displayWidth = Math.max(100, (activeLanes.length + 1) * laneWidth + xOffset);
+    // Calculate required width based on actual max lanes used
+    const displayWidth = Math.max(40, (maxLanesCount) * laneWidth + xOffset + 10);
     const displayHeight = commits.length * rowHeight;
     
+    // Notify parent of the calculated width
+    if (onWidthChange) {
+      onWidthChange(displayWidth);
+    }
+
     canvas.width = displayWidth * dpr;
     canvas.height = displayHeight * dpr;
     canvas.style.width = `${displayWidth}px`;
