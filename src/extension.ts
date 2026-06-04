@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('Extension "vscode-git-jb" is now active!');
-
   const provider = new GitJBViewProvider(context.extensionUri);
 
   context.subscriptions.push(
@@ -29,6 +29,10 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._extensionUri, 'dist-webview', 'assets', 'main.js')
+    );
+
     return `<!DOCTYPE html>
 			<html lang="en">
 			<head>
@@ -37,7 +41,8 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
 				<title>Git JB</title>
 			</head>
 			<body>
-				<h1>Hello from Git JB!</h1>
+				<div id="root"></div>
+				<script type="module" src="${scriptUri}"></script>
 			</body>
 			</html>`;
   }
