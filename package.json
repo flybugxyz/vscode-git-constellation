@@ -1,6 +1,6 @@
 {
   "name": "vscode-git-jb",
-  "displayName": "Git JB",
+  "displayName": "Git JB Style",
   "description": "JetBrains-style Git visualization for VS Code",
   "version": "0.0.1",
   "engines": {
@@ -16,7 +16,7 @@
       "panel": [
         {
           "id": "git-jb",
-          "title": "Git JB",
+          "title": "Git JB Style",
           "icon": "$(git-branch)"
         }
       ]
