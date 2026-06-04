@@ -188,8 +188,11 @@ button {
 
 .tree-icon {
   margin-right: 6px;
-  width: 14px;
-  text-align: center;
+  width: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
 }
 .branch-popup {
   position: absolute;

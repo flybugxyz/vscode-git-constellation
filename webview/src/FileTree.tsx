@@ -18,40 +18,42 @@ interface TreeNode {
   status?: string;
 }
 
-const getFileIcon = (fileName: string): string => {
+const getFileIconClass = (fileName: string): string => {
   const ext = fileName.split('.').pop()?.toLowerCase();
   switch (ext) {
     case 'ts':
-    case 'tsx': return '🟦';
+    case 'tsx':
     case 'js':
-    case 'jsx': return '🟨';
-    case 'json': return '🟡';
-    case 'md': return '📝';
-    case 'css':
-    case 'scss':
-    case 'less': return '🎨';
-    case 'html': return '🌐';
-    case 'py': return '🐍';
-    case 'go': return '🐹';
-    case 'rs': return '🦀';
-    case 'java': return '☕';
-    case 'php': return '🐘';
-    case 'rb': return '💎';
+    case 'jsx':
+    case 'py':
+    case 'go':
+    case 'rs':
+    case 'java':
     case 'c':
     case 'cpp':
-    case 'h': return '⚙️';
+    case 'h': return 'codicon-file-code';
+    case 'json': return 'codicon-json';
+    case 'md': return 'codicon-markdown';
+    case 'css':
+    case 'scss':
+    case 'less': return 'codicon-symbol-color';
+    case 'html': return 'codicon-globe';
     case 'png':
     case 'jpg':
     case 'jpeg':
     case 'gif':
-    case 'svg': return '🖼️';
+    case 'svg': return 'codicon-file-media';
     case 'yaml':
     case 'yml':
-    case 'xml': return '🔧';
+    case 'xml': return 'codicon-settings';
     case 'sh':
     case 'bash':
-    case 'bat': return '🐚';
-    default: return '📄';
+    case 'bat': return 'codicon-terminal';
+    case 'pdf': return 'codicon-file-pdf';
+    case 'zip':
+    case 'tar':
+    case 'gz': return 'codicon-file-zip';
+    default: return 'codicon-file';
   }
 };
 
@@ -108,8 +110,7 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
             className={`tree-item ${getStatusClass(node.status)}`} 
             onClick={() => node.isFile && onFileClick(node.fullPath)}
           >
-            <span className="tree-icon">
-              {node.isFile ? getFileIcon(node.name) : '📁'}
+            <span className={`tree-icon codicon ${node.isFile ? getFileIconClass(node.name) : 'codicon-folder'}`}>
             </span>
             {node.name}
             {node.status && <span style={{ marginLeft: 'auto', fontSize: '9px', opacity: 0.6 }}>{node.status}</span>}
