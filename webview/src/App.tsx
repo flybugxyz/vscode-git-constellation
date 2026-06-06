@@ -639,7 +639,24 @@ function App() {
                       }
                     }}
                   >
-                    <span className="codicon codicon-git-commit"></span>
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      width="16" 
+                      height="16" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                      style={{ display: 'block' }}
+                    >
+                      <circle cx="11" cy="18" r="3"/>
+                      <circle cx="18" cy="15" r="3"/>
+                      <path d="M12.5 15.5 15 7"/>
+                      <path d="M19.5 12.5 21 7"/>
+                      <path d="M15 7h6.5l-4.5-4.5"/>
+                    </svg>
                   </button>
                 </div>
 
