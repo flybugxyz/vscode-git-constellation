@@ -1,4 +1,4 @@
-# Git JB Style - VS Code Extension
+# GitConstellation - VS Code Extension
 
 [English](#english) | [中文](#中文)
 
@@ -6,7 +6,7 @@
 
 ## English
 
-Git JB Style is a VS Code extension that brings the highly acclaimed Git visualization and management experience from JetBrains IDEs to Visual Studio Code. It provides a powerful, multi-colored commit graph and a cohesive interface for managing local changes and history.
+GitConstellation is a VS Code extension that brings the highly acclaimed Git visualization and management experience from JetBrains IDEs to Visual Studio Code. It provides a powerful, multi-colored commit graph and a cohesive interface for managing local changes and history.
 
 ### ✨ Features
 
@@ -25,13 +25,13 @@ Git JB Style is a VS Code extension that brings the highly acclaimed Git visuali
 2.  Run `npm install` to install dependencies.
 3.  Run `npm run compile` to build the extension and webview.
 4.  Press `F5` in VS Code to start the extension in a new Extension Development Host window.
-5.  Open the "Git JB Style" tab in the bottom panel (alongside Terminal/Output).
+5.  Open the "GitConstellation" tab in the bottom panel (alongside Terminal/Output).
 
 ---
 
 ## 中文
 
-Git JB Style 是一款 VS Code 插件，旨在将深受好评的 JetBrains IDE Git 可视化与管理体验带入 Visual Studio Code。它提供了一个强大的多色提交图谱（Commit Graph）以及一个用于管理本地更改和历史记录的统一界面。
+GitConstellation 是一款 VS Code 插件，旨在将深受好评的 JetBrains IDE Git 可视化与管理体验带入 Visual Studio Code。它提供了一个强大的多色提交图谱（Commit Graph）以及一个用于管理本地更改和历史记录的统一界面。
 
 ### ✨ 功能特性
 
@@ -50,7 +50,7 @@ Git JB Style 是一款 VS Code 插件，旨在将深受好评的 JetBrains IDE G
 2.  运行 `npm install` 安装依赖。
 3.  运行 `npm run compile` 编译插件和 Webview。
 4.  在 VS Code 中按 `F5` 启动插件调试。
-5.  在底部面板（终端/输出旁边）打开 "Git JB Style" 标签页。
+5.  在底部面板（终端/输出旁边）打开 "GitConstellation" 标签页。
 
 ---
 

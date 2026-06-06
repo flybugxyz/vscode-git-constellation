@@ -1,12 +1,12 @@
 {
-  "name": "vscode-git-jb",
-  "displayName": "Git JB Style",
+  "name": "vscode-git-constellation",
+  "displayName": "GitConstellation",
   "description": "JetBrains-style Git visualization for VS Code",
   "version": "0.0.1",
   "publisher": "flybugxyz",
   "repository": {
     "type": "git",
-    "url": "https://github.com/flybugxyz/vscode-git-jb-style.git"
+    "url": "https://github.com/flybugxyz/vscode-git-constellation-style.git"
   },
   "engines": {
     "vscode": "^1.80.0"
@@ -19,29 +19,29 @@
   "contributes": {
     "commands": [
       {
-        "command": "git-jb.testOpenAISettings",
+        "command": "git-constellation.testOpenAISettings",
         "title": "Test OpenAI Settings"
       }
     ],
     "configuration": {
-      "title": "Git JB Style",
+      "title": "GitConstellation",
       "properties": {
-        "git-jb.openai.apiUrl": {
+        "git-constellation.openai.apiUrl": {
           "type": "string",
           "default": "https://api.openai.com/v1/chat/completions",
-          "markdownDescription": "OpenAI API URL. [Test Configuration](command:git-jb.testOpenAISettings)"
+          "markdownDescription": "OpenAI API URL. [Test Configuration](command:git-constellation.testOpenAISettings)"
         },
-        "git-jb.openai.apiKey": {
+        "git-constellation.openai.apiKey": {
           "type": "string",
           "default": "",
           "description": "OpenAI API Key."
         },
-        "git-jb.openai.model": {
+        "git-constellation.openai.model": {
           "type": "string",
           "default": "gpt-3.5-turbo",
           "description": "OpenAI Model."
         },
-        "git-jb.openai.prompt": {
+        "git-constellation.openai.prompt": {
           "type": "string",
           "default": "Generate a concise, conventional commit message based on the following git diff. Output ONLY the commit message without any markdown code blocks or quotes.",
           "description": "System prompt for generating commit messages."
@@ -51,17 +51,17 @@
     "viewsContainers": {
       "panel": [
         {
-          "id": "git-jb",
-          "title": "Git JB Style",
+          "id": "git-constellation",
+          "title": "GitConstellation",
           "icon": "$(git-branch)"
         }
       ]
     },
     "views": {
-      "git-jb": [
+      "git-constellation": [
         {
           "type": "webview",
-          "id": "git-jb.log",
+          "id": "git-constellation.log",
           "name": "Log"
         }
       ]

@@ -60,8 +60,8 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('git-jb.testOpenAISettings', async () => {
-      const config = vscode.workspace.getConfiguration('git-jb.openai');
+    vscode.commands.registerCommand('git-constellation.testOpenAISettings', async () => {
+      const config = vscode.workspace.getConfiguration('git-constellation.openai');
       const apiUrl = config.get<string>('apiUrl');
       const apiKey = config.get<string>('apiKey');
       const model = config.get<string>('model');
@@ -102,7 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
       return await gitService.getFileContent(hash, filePath);
     }
   })();
-  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('git-jb-show', contentProvider));
+  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('git-constellation-show', contentProvider));
 
   // Register custom content provider for showing full commit diffs
   const diffContentProvider = new (class implements vscode.TextDocumentContentProvider {
@@ -111,7 +111,7 @@ export function activate(context: vscode.ExtensionContext) {
       return await gitService.getDiff(hash);
     }
   })();
-  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('git-jb-diff', diffContentProvider));
+  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('git-constellation-diff', diffContentProvider));
 
   // Register custom content provider for showing tag details
   const tagContentProvider = new (class implements vscode.TextDocumentContentProvider {
@@ -120,7 +120,7 @@ export function activate(context: vscode.ExtensionContext) {
       return await gitService.getTagDetails(tagName);
     }
   })();
-  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('git-jb-tag', tagContentProvider));
+  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('git-constellation-tag', tagContentProvider));
 
   // Refresh on git changes
   const watcher = vscode.workspace.createFileSystemWatcher('**/.git/refs/heads/*');
@@ -139,7 +139,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 class GitJBViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = 'git-jb.log';
+  public static readonly viewType = 'git-constellation.log';
   private _view?: vscode.WebviewView;
   private _currentFilter: string = 'ALL';
   private _currentAuthorFilter: string = 'ALL';
@@ -184,7 +184,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           this.refresh();
           break;
         case 'generateCommitMessage': {
-          const config = vscode.workspace.getConfiguration('git-jb.openai');
+          const config = vscode.workspace.getConfiguration('git-constellation.openai');
           const apiUrl = config.get<string>('apiUrl');
           const apiKey = config.get<string>('apiKey');
           const model = config.get<string>('model');
@@ -193,7 +193,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           if (!apiKey || !apiUrl) {
             const action = await vscode.window.showWarningMessage('OpenAI API Key and URL must be configured to generate commit messages.', 'Open Settings');
             if (action === 'Open Settings') {
-              vscode.commands.executeCommand('workbench.action.openSettings', 'git-jb.openai');
+              vscode.commands.executeCommand('workbench.action.openSettings', 'git-constellation.openai');
             }
             this._view?.webview.postMessage({ type: 'generateCommitMessageResult', error: 'Not configured' });
             break;
@@ -239,19 +239,19 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           const { hash, path: filePath, isCompare } = data;
           if (hash) {
             if (isCompare) {
-              const leftUri = vscode.Uri.parse(`git-jb-show:HEAD/${filePath}`);
-              const rightUri = vscode.Uri.parse(`git-jb-show:${hash}/${filePath}`);
+              const leftUri = vscode.Uri.parse(`git-constellation-show:HEAD/${filePath}`);
+              const rightUri = vscode.Uri.parse(`git-constellation-show:${hash}/${filePath}`);
               vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (HEAD vs ${hash.substring(0, 7)})`);
             } else {
               const parentHash = await this._gitService.getParentHash(hash);
-              const leftUri = vscode.Uri.parse(`git-jb-show:${parentHash || ''}/${filePath}`);
-              const rightUri = vscode.Uri.parse(`git-jb-show:${hash}/${filePath}`);
+              const leftUri = vscode.Uri.parse(`git-constellation-show:${parentHash || ''}/${filePath}`);
+              const rightUri = vscode.Uri.parse(`git-constellation-show:${hash}/${filePath}`);
               vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (${hash.substring(0, 7)})`);
             }
           } else {
             const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             if (workspaceRoot) {
-              const leftUri = vscode.Uri.parse(`git-jb-show:HEAD/${filePath}`);
+              const leftUri = vscode.Uri.parse(`git-constellation-show:HEAD/${filePath}`);
               const rightUri = vscode.Uri.file(path.join(workspaceRoot, filePath));
               vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (Local Changes)`);
             }
@@ -396,7 +396,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           break;
         }
         case 'viewDiff': {
-          const uri = vscode.Uri.parse(`git-jb-diff:${data.hash}.diff`);
+          const uri = vscode.Uri.parse(`git-constellation-diff:${data.hash}.diff`);
           const doc = await vscode.workspace.openTextDocument(uri);
           await vscode.window.showTextDocument(doc, { preview: false });
           break;
@@ -479,7 +479,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           break;
         }
         case 'viewTagDetails': {
-          const uri = vscode.Uri.parse(`git-jb-tag:${data.tag}.txt`);
+          const uri = vscode.Uri.parse(`git-constellation-tag:${data.tag}.txt`);
           const doc = await vscode.workspace.openTextDocument(uri);
           await vscode.window.showTextDocument(doc, { preview: false });
           break;
@@ -551,7 +551,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource} vscode-resource:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'unsafe-eval';">
 				<link href="${styleUri}" rel="stylesheet">
-				<title>Git JB Style</title>
+				<title>GitConstellation</title>
 			</head>
 			<body>
 				<div id="root"></div>

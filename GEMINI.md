@@ -1,9 +1,9 @@
-# Project: Git JB Style - Project Instructions
+# Project: GitConstellation - Project Instructions
 
 Foundational mandates for maintenance and future development.
 
 ## Project Overview
-A VS Code extension mimicking the JetBrains Git UI experience. Located in the `vscode-git-jb` directory.
+A VS Code extension mimicking the JetBrains Git UI experience. Located in the `vscode-git-constellation` directory.
 
 ## Coding Rule
 - Finished the task should run `npm run compile` to compile the project and write a commit message then commit it.
@@ -48,9 +48,9 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - **Implementation**: Handled by a unified `<ContextMenu />` component in `ContextMenu.tsx`. It provides standard styling, keyboard navigation, submenus (e.g. for Copying), danger states, and dynamic enabling/disabling of options.
 - **Commit Menu**: Copy SHA/short SHA/message/URL, create branch/tag/worktree, cherry-pick, revert, rebase, merge, compare, inspect details, open browser, view diff.
 - **Branch Menu**: Checkout, new branch, merge, rebase, pull, push, push to remote, rename, delete (local/remote), compare, pin/unpin, open in browser, set upstream. Pinned branches are displayed at the very top of the branch filter popup.
-- **Tag Menu**: View tag details (registers custom content provider `git-jb-tag` scheme), create branch, compare, delete (local/remote), copy tag name, open in browser.
+- **Tag Menu**: View tag details (registers custom content provider `git-constellation-tag` scheme), create branch, compare, delete (local/remote), copy tag name, open in browser.
 - **Compare Mode**: Diff status between branches/tags or HEAD vs commit. Renders file differences list in the side pane with a banner to exit.
-- **View Diff**: Registers a custom text content provider `git-jb-diff` scheme returning full git diffs.
+- **View Diff**: Registers a custom text content provider `git-constellation-diff` scheme returning full git diffs.
 
 ### 6. Commit List Table
 - **Layout**: Uses `table-layout: fixed` for stable column dimensions.
@@ -58,9 +58,9 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - **Graph Column**: Exempt from manual resizing; width is automatically controlled by `GitGraph`.
 
 ### 7. AI Commit Generation
-- **Integration**: OpenAI-compatible API configured via `git-jb.openai.apiUrl`, `git-jb.openai.apiKey`, `git-jb.openai.model`, and `git-jb.openai.prompt`.
+- **Integration**: OpenAI-compatible API configured via `git-constellation.openai.apiUrl`, `git-constellation.openai.apiKey`, `git-constellation.openai.model`, and `git-constellation.openai.prompt`.
 - **Logic**: Reads diff from selected checked files, limits length, and sends to the configured API. If no API key is set, it prompts the user to open settings.
-- **Test Command**: `git-jb.testOpenAISettings` is available via settings page or command palette to verify connection.
+- **Test Command**: `git-constellation.testOpenAISettings` is available via settings page or command palette to verify connection.
 
 ## Maintenance Guidelines
 - **Building**: Always run `npm run compile` to build both Webview (Vite) and Extension (Webpack).

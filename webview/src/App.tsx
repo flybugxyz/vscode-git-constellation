@@ -34,21 +34,21 @@ function App() {
   const [detailsExpanded, setDetailsExpanded] = useState(true);
   const [graphWidth, setGraphWidth] = useState(100);
   const [descWidth, setDescWidth] = useState<number>(() => {
-    const saved = localStorage.getItem('git-jb-desc-width');
+    const saved = localStorage.getItem('git-constellation-desc-width');
     return saved ? parseInt(saved, 10) : 450;
   });
   const [authorWidth, setAuthorWidth] = useState<number>(() => {
-    const saved = localStorage.getItem('git-jb-author-width');
+    const saved = localStorage.getItem('git-constellation-author-width');
     return saved ? parseInt(saved, 10) : 150;
   });
   const [dateWidth, setDateWidth] = useState<number>(() => {
-    const saved = localStorage.getItem('git-jb-date-width');
+    const saved = localStorage.getItem('git-constellation-date-width');
     return saved ? parseInt(saved, 10) : 150;
   });
   const [resizing, setResizing] = useState<{ col: 'desc' | 'author' | 'date'; startX: number; startWidth: number } | null>(null);
 
   const [commitBoxHeight, setCommitBoxHeight] = useState<number>(() => {
-    const saved = localStorage.getItem('git-jb-commit-box-height');
+    const saved = localStorage.getItem('git-constellation-commit-box-height');
     return saved ? parseInt(saved, 10) : 130;
   });
   const [resizingCommitBox, setResizingCommitBox] = useState<{ startY: number; startHeight: number } | null>(null);
@@ -122,7 +122,7 @@ function App() {
     const handleMouseUp = (e: MouseEvent) => {
       const deltaX = e.clientX - resizing.startX;
       const newWidth = Math.max(50, resizing.startWidth + deltaX);
-      localStorage.setItem(`git-jb-${resizing.col}-width`, String(newWidth));
+      localStorage.setItem(`git-constellation-${resizing.col}-width`, String(newWidth));
       setResizing(null);
     };
 
@@ -149,7 +149,7 @@ function App() {
     const handleMouseUp = (e: MouseEvent) => {
       const deltaY = resizingCommitBox.startY - e.clientY;
       const newHeight = Math.max(80, Math.min(window.innerHeight - 100, resizingCommitBox.startHeight + deltaY));
-      localStorage.setItem('git-jb-commit-box-height', String(newHeight));
+      localStorage.setItem('git-constellation-commit-box-height', String(newHeight));
       setResizingCommitBox(null);
     };
 
