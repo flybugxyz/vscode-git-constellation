@@ -895,13 +895,13 @@ function App() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Commit Message</span>
                 <button
-                  className="icon-button"
+                  className="ai-generate-button"
                   title="Generate Commit Message (AI)"
                   onClick={handleGenerateAI}
                   disabled={isGenerating || checkedFiles.size === 0}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--vscode-icon-foreground)' }}
                 >
-                  <span className={`codicon ${isGenerating ? 'codicon-loading codicon-modifier-spin' : 'codicon-sparkle'}`}></span>
+                  <span className={`codicon ${isGenerating ? 'codicon-loading codicon-modifier-spin' : 'codicon-sparkle'}`} style={{ fontSize: '12px' }}></span>
+                  {isGenerating ? 'Generating...' : 'AI Generate'}
                 </button>
               </div>
               <textarea 
