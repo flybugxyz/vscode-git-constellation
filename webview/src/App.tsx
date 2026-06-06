@@ -574,7 +574,7 @@ function App() {
         {activeTab === 'log' ? (
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-              <div className="header">
+              <div className="header" style={{ justifyContent: 'space-between', position: 'relative' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button 
                     style={{ background: 'none', border: '1px solid var(--vscode-panel-border)', padding: '2px 8px', fontSize: '10px' }}
@@ -611,7 +611,38 @@ function App() {
                       ✕
                     </span>
                   )}
+                  <span style={{ marginLeft: '20px' }}>{gitData?.log?.all.length || 0} commits</span>
                 </div>
+
+                <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button 
+                    className="toolbar-button" 
+                    title="Pull"
+                    onClick={() => vscode.postMessage({ type: 'pull' })}
+                  >
+                    <span className="codicon codicon-cloud-download"></span>
+                  </button>
+                  <button 
+                    className="toolbar-button" 
+                    title="Push"
+                    onClick={() => vscode.postMessage({ type: 'push' })}
+                  >
+                    <span className="codicon codicon-cloud-upload"></span>
+                  </button>
+                  <button 
+                    className="toolbar-button" 
+                    title="Cherry-pick selected commit"
+                    disabled={selectedIndex < 0 || !selectedCommit}
+                    onClick={() => {
+                      if (selectedCommit) {
+                        vscode.postMessage({ type: 'cherryPick', hash: selectedCommit.hash });
+                      }
+                    }}
+                  >
+                    <span className="codicon codicon-git-commit"></span>
+                  </button>
+                </div>
+
                 {showBranches && (
                   <div className="branch-popup">
                     <div 
@@ -692,7 +723,6 @@ function App() {
                     ))}
                   </div>
                 )}
-                <span style={{ marginLeft: '20px' }}>{gitData?.log?.all.length || 0} commits</span>
               </div>
               <div className="table-container" style={{ flex: 1, position: 'relative' }}>
                 {gitData?.log?.all && (

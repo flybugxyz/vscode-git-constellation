@@ -138,6 +138,18 @@ export class GitService {
     }
   }
 
+  public async pull() {
+    if (!this._git) return false;
+    try {
+      await this._git.pull();
+      vscode.window.showInformationMessage('Pull succeeded.');
+      return true;
+    } catch (err) {
+      vscode.window.showErrorMessage(`Pull failed: ${err}`);
+      return false;
+    }
+  }
+
   public async getDiffForFiles(files: string[]): Promise<string> {
     if (!this._git || files.length === 0) return '';
     try {

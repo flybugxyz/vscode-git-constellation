@@ -183,6 +183,14 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           }
           this.refresh();
           break;
+        case 'pull':
+          await this._gitService.pull();
+          this.refresh();
+          break;
+        case 'push':
+          await this._gitService.push(false);
+          this.refresh();
+          break;
         case 'generateCommitMessage': {
           const config = vscode.workspace.getConfiguration('git-constellation.openai');
           const apiUrl = config.get<string>('apiUrl');
