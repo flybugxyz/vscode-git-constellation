@@ -26,6 +26,14 @@ export function activate(context: vscode.ExtensionContext) {
   watcher.onDidCreate(() => provider.refresh());
   watcher.onDidDelete(() => provider.refresh());
   context.subscriptions.push(watcher);
+
+  // Refresh on file save, creation, deletion, rename to keep local changes up to date
+  context.subscriptions.push(
+    vscode.workspace.onDidSaveTextDocument(() => provider.refresh()),
+    vscode.workspace.onDidCreateFiles(() => provider.refresh()),
+    vscode.workspace.onDidDeleteFiles(() => provider.refresh()),
+    vscode.workspace.onDidRenameFiles(() => provider.refresh())
+  );
 }
 
 class GitJBViewProvider implements vscode.WebviewViewProvider {
