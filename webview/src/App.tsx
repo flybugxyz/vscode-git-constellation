@@ -224,6 +224,10 @@ function App() {
     vscode.postMessage({ type: 'openDiff', hash: '', path: filePath });
   };
 
+  const handleDiscard = (path: string) => {
+    vscode.postMessage({ type: 'discardChanges', path });
+  };
+
   const handleSelectCommit = (idx: number, hash: string) => {
     setSelectedIndex(idx);
     setIsCompareMode(false);
@@ -926,6 +930,7 @@ function App() {
                   checkboxes={true}
                   checkedPaths={checkedFiles}
                   onCheckChange={handleCheckChange}
+                  onDiscard={handleDiscard}
                 />
               ) : (
                 <p style={{ padding: '10px', fontSize: '11px', opacity: 0.6 }}>No local changes.</p>

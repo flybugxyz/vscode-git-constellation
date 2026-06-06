@@ -11,6 +11,7 @@ interface FileTreeProps {
   checkboxes?: boolean;
   checkedPaths?: Set<string>;
   onCheckChange?: (path: string, checked: boolean, filePaths: string[]) => void;
+  onDiscard?: (path: string) => void;
 }
 
 interface TreeNode {
@@ -96,7 +97,8 @@ export const FileTree: React.FC<FileTreeProps> = ({
   onFileClick, 
   checkboxes = false, 
   checkedPaths, 
-  onCheckChange 
+  onCheckChange,
+  onDiscard
 }) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
@@ -224,7 +226,19 @@ export const FileTree: React.FC<FileTreeProps> = ({
             <span className={`tree-icon codicon ${node.isFile ? getFileIconClass(node.name) : (isExpanded ? 'codicon-folder-opened' : 'codicon-folder')}`}>
             </span>
             <span className="tree-name">{node.name}</span>
-            {node.status && <span style={{ marginLeft: 'auto', fontSize: '9px', opacity: 0.6, paddingRight: '4px' }}>{node.status}</span>}
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {onDiscard && (
+                <span 
+                  className="codicon codicon-discard tree-discard-btn" 
+                  title="Discard changes"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDiscard(node.fullPath);
+                  }}
+                />
+              )}
+              {node.status && <span style={{ fontSize: '9px', opacity: 0.6, paddingRight: '4px' }}>{node.status}</span>}
+            </div>
           </div>
           {!node.isFile && isExpanded && renderNodes(node.children, depth + 1)}
         </div>

@@ -148,7 +148,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly _extensionUri: vscode.Uri,
     private readonly _gitService: GitService
-  ) {}
+  ) { }
 
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -191,6 +191,18 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           await this._gitService.push(false);
           this.refresh();
           break;
+        case 'discardChanges': {
+          const confirm = await vscode.window.showWarningMessage(
+            `Are you sure you want to discard all changes in '${data.path}'? This operation cannot be undone.`,
+            { modal: true },
+            'Discard'
+          );
+          if (confirm === 'Discard') {
+            await this._gitService.discardChanges(data.path);
+            this.refresh();
+          }
+          break;
+        }//aa
         case 'generateCommitMessage': {
           const config = vscode.workspace.getConfiguration('git-constellation.openai');
           const apiUrl = config.get<string>('apiUrl');
@@ -217,7 +229,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
               if (!diff.trim()) {
                 throw new Error("No diff available for the selected files.");
               }
-              
+
               const result = await requestAIApi(apiUrl, apiKey, {
                 model: model,
                 messages: [
@@ -225,7 +237,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
                   { role: 'user', content: `Here is the git diff:\n\n${diff}` }
                 ]
               });
-              
+
               if (result && result.choices && result.choices[0]) {
                 const message = result.choices[0].message.content.trim();
                 this._view?.webview.postMessage({ type: 'generateCommitMessageResult', message });
@@ -317,9 +329,9 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           break;
         }
         case 'createBranchFrom': {
-          const promptLabel = data.refType === 'commit' ? `commit ${data.ref.substring(0, 7)}` : 
-                              data.refType === 'tag' ? `tag '${data.ref}'` : 
-                              `'${data.ref}'`;
+          const promptLabel = data.refType === 'commit' ? `commit ${data.ref.substring(0, 7)}` :
+            data.refType === 'tag' ? `tag '${data.ref}'` :
+              `'${data.ref}'`;
           const branchName = await vscode.window.showInputBox({
             prompt: `Create Branch from ${promptLabel}`,
             placeHolder: 'Enter branch name'
@@ -531,7 +543,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
         const currentUser = await this._gitService.getCurrentUser();
 
         console.log(`GitJBViewProvider: Sending update to webview. Log: ${log?.all.length || 0} commits`);
-        
+
         this._view.webview.postMessage({
           type: 'update',
           payload: { log, status, branches, authors, currentUser }
@@ -569,4 +581,4 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   }
 }
 
-export function deactivate() {}
+export function deactivate() { }

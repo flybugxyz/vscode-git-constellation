@@ -653,4 +653,29 @@ body.resizing-row * {
   font-size: 16px;
 }
 
+/* Tree Discard Button styling */
+.tree-discard-btn {
+  opacity: 0;
+  cursor: pointer;
+  font-size: 13px !important;
+  color: var(--vscode-descriptionForeground);
+  transition: opacity 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 3px;
+}
+
+.tree-item:hover .tree-discard-btn {
+  opacity: 0.7;
+}
+
+.tree-item:hover .tree-discard-btn:hover {
+  opacity: 1;
+  color: var(--vscode-errorForeground, #f48771);
+  background-color: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.08));
+  transform: scale(1.1);
+}
+
 

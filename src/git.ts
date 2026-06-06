@@ -150,6 +150,38 @@ export class GitService {
     }
   }
 
+  public async discardChanges(filePath: string) {
+    if (!this._git) return false;
+    try {
+      // 1. Unstage any changes
+      try {
+        await this._git.reset(['HEAD', '--', filePath]);
+      } catch (e) {
+        // ignore reset failure if not in index
+      }
+      
+      // 2. Discard tracked changes
+      try {
+        await this._git.checkout(['--', filePath]);
+      } catch (e) {
+        // ignore checkout failure if untracked
+      }
+      
+      // 3. Clean untracked files/folders
+      try {
+        await this._git.clean('fd', ['--', filePath]);
+      } catch (e) {
+        // ignore clean failure
+      }
+      
+      vscode.window.showInformationMessage(`Discarded changes in '${filePath}'.`);
+      return true;
+    } catch (err) {
+      vscode.window.showErrorMessage(`Discard failed: ${err}`);
+      return false;
+    }
+  }
+
   public async getDiffForFiles(files: string[]): Promise<string> {
     if (!this._git || files.length === 0) return '';
     try {
