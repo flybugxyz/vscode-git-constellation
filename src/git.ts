@@ -13,7 +13,7 @@ export class GitService {
     }
   }
 
-  public async getLog(branch: string = 'ALL', author: string = 'ALL'): Promise<any | undefined> {
+  public async getLog(branch: string = 'ALL', author: string = 'ALL', search: string = ''): Promise<any | undefined> {
     if (!this._git) {
       console.log('GitService: No git instance available');
       return undefined;
@@ -21,6 +21,23 @@ export class GitService {
     try {
       console.log(`GitService: Fetching log with parents for branch/filter: ${branch}...`);
       
+      const formatStr = '--format=%H%x09%P%x09%D%x09%s%x09%an%x09%ae%x09%at';
+      const parseCommits = (rawResult: string) => {
+        const lines = rawResult.trim().split('\n');
+        return lines.filter(Boolean).map(line => {
+          const [hash, parents, refs, message, author, email, date] = line.split('\t');
+          return {
+            hash,
+            parents: parents ? parents.split(' ') : [],
+            refs: refs || '',
+            message,
+            author_name: author,
+            author_email: email,
+            date
+          };
+        });
+      };
+
       const args = [
         'log',
         '--max-count=100'
@@ -38,24 +55,29 @@ export class GitService {
       if (author && author !== 'ALL') {
         args.push(`--author=${author}`);
       }
+
+      if (search) {
+        args.push(`--grep=${search}`, '-i');
+      }
       
-      args.push('--format=%H%x09%P%x09%D%x09%s%x09%an%x09%ae%x09%at');
+      args.push(formatStr);
 
       const result = await this._git.raw(args);
-      
-      const lines = result.trim().split('\n');
-      const commits = lines.filter(Boolean).map(line => {
-        const [hash, parents, refs, message, author, email, date] = line.split('\t');
-        return {
-          hash,
-          parents: parents ? parents.split(' ') : [],
-          refs: refs || '',
-          message,
-          author_name: author,
-          author_email: email,
-          date
-        };
-      });
+      const commits = parseCommits(result);
+
+      if (search && /^[a-fA-F0-9]{4,40}$/.test(search)) {
+        try {
+          const hashResult = await this._git.raw(['log', '-1', formatStr, search]);
+          if (hashResult.trim()) {
+            const hashCommits = parseCommits(hashResult);
+            if (hashCommits.length > 0 && !commits.some(c => c.hash === hashCommits[0].hash)) {
+              commits.unshift(hashCommits[0]);
+            }
+          }
+        } catch {
+          // ignore if hash not found
+        }
+      }
 
       console.log(`GitService: Found ${commits.length} commits`);
       return { all: commits };

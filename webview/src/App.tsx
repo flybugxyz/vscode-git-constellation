@@ -26,6 +26,7 @@ function App() {
   const [selectedCommitFiles, setSelectedCommitFiles] = useState<{hash: string, files: {status: string, path: string}[]} | null>(null);
   const [filterBranch, setFilterBranch] = useState<string>('ALL');
   const [filterAuthor, setFilterAuthor] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [authorPopupPos, setAuthorPopupPos] = useState<{ x: number, y: number } | null>(null);
   const [localExpanded, setLocalExpanded] = useState(true);
   const [remoteExpanded, setRemoteExpanded] = useState(false);  const [filesExpanded, setFilesExpanded] = useState(true);
@@ -191,6 +192,12 @@ function App() {
     setSelectedCommitFiles(null);
     vscode.postMessage({ type: 'setFilter', branch });
     setShowBranches(false);
+  };
+
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      vscode.postMessage({ type: 'setSearchFilter', search: searchQuery });
+    }
   };
 
   const handleFilterAuthor = (author: string) => {
@@ -524,12 +531,43 @@ function App() {
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
               <div className="header">
-                <button 
-                  style={{ background: 'none', border: '1px solid var(--vscode-panel-border)', padding: '2px 8px', fontSize: '10px' }}
-                  onClick={() => setShowBranches(!showBranches)}
-                >
-                  {filterBranch.startsWith('remotes/') ? filterBranch.replace(/^remotes\//, '') : filterBranch} ▾
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button 
+                    style={{ background: 'none', border: '1px solid var(--vscode-panel-border)', padding: '2px 8px', fontSize: '10px' }}
+                    onClick={() => setShowBranches(!showBranches)}
+                  >
+                    {filterBranch.startsWith('remotes/') ? filterBranch.replace(/^remotes\//, '') : filterBranch} ▾
+                  </button>
+                  <input
+                    type="text"
+                    placeholder="Search commits..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={handleSearch}
+                    style={{
+                      background: 'var(--vscode-input-background)',
+                      color: 'var(--vscode-input-foreground)',
+                      border: '1px solid var(--vscode-input-border)',
+                      padding: '2px 6px',
+                      fontSize: '11px',
+                      borderRadius: '2px',
+                      outline: 'none',
+                      width: '200px'
+                    }}
+                  />
+                  {searchQuery && (
+                    <span 
+                      style={{ cursor: 'pointer', fontSize: '12px', opacity: 0.7, padding: '0 4px' }}
+                      title="Clear Search"
+                      onClick={() => {
+                        setSearchQuery('');
+                        vscode.postMessage({ type: 'setSearchFilter', search: '' });
+                      }}
+                    >
+                      ✕
+                    </span>
+                  )}
+                </div>
                 {showBranches && (
                   <div className="branch-popup">
                     <div 

@@ -59,6 +59,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private _currentFilter: string = 'ALL';
   private _currentAuthorFilter: string = 'ALL';
+  private _currentSearchFilter: string = '';
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -84,6 +85,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
         case 'ready':
           this._currentFilter = 'ALL';
           this._currentAuthorFilter = 'ALL';
+          this._currentSearchFilter = '';
           this.refresh();
           break;
         case 'commit':
@@ -130,6 +132,10 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           break;
         case 'setAuthorFilter':
           this._currentAuthorFilter = data.author;
+          this.refresh();
+          break;
+        case 'setSearchFilter':
+          this._currentSearchFilter = data.search;
           this.refresh();
           break;
         case 'copySHA':
@@ -378,7 +384,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     console.log(`GitJBViewProvider: Refreshing with filter: ${this._currentFilter}...`);
     if (this._view) {
       try {
-        const log = await this._gitService.getLog(this._currentFilter, this._currentAuthorFilter);
+        const log = await this._gitService.getLog(this._currentFilter, this._currentAuthorFilter, this._currentSearchFilter);
         const status = await this._gitService.getStatus();
         const branches = await this._gitService.getBranches();
         const authors = await this._gitService.getAuthors();
