@@ -406,6 +406,18 @@ function App() {
             
             {selectedIndex >= 0 && (
               <div className="side-pane">
+                <div className="side-pane-title-bar">
+                  <span>Commit Details</span>
+                  <span 
+                    className="codicon codicon-close side-pane-close" 
+                    title="Close Details"
+                    onClick={() => {
+                      setSelectedIndex(-1);
+                      setSelectedCommitFiles(null);
+                      setIsCompareMode(false);
+                    }}
+                  ></span>
+                </div>
                 <div className="side-pane-header" onClick={() => setFilesExpanded(!filesExpanded)}>
                   <span className={`header-chevron codicon ${filesExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right'}`}></span>
                   Changed Files

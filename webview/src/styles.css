@@ -183,6 +183,30 @@ button:disabled {
   flex-direction: column;
 }
 
+.side-pane-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: bold;
+  border-bottom: var(--jb-border);
+  background-color: var(--vscode-panel-background);
+  color: var(--vscode-descriptionForeground);
+  user-select: none;
+}
+
+.side-pane-close {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.side-pane-close:hover {
+  color: var(--vscode-foreground);
+}
+
 .file-tree-wrapper {
   flex: 1;
   overflow-y: auto;
