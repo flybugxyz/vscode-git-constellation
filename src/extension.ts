@@ -31,6 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
 class GitJBViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'git-jb.log';
   private _view?: vscode.WebviewView;
+  private _currentFilter: string = 'ALL';
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -54,6 +55,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (data) => {
       switch (data.type) {
         case 'ready':
+          this._currentFilter = 'ALL';
           this.refresh();
           break;
         case 'commit':
@@ -77,15 +79,19 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           await this._gitService.checkout(data.branch);
           this.refresh();
           break;
+        case 'setFilter':
+          this._currentFilter = data.branch;
+          this.refresh();
+          break;
       }
     });
   }
 
   public async refresh() {
-    console.log('GitJBViewProvider: Refreshing...');
+    console.log(`GitJBViewProvider: Refreshing with filter: ${this._currentFilter}...`);
     if (this._view) {
       try {
-        const log = await this._gitService.getLog();
+        const log = await this._gitService.getLog(this._currentFilter);
         const status = await this._gitService.getStatus();
         const branches = await this._gitService.getBranches();
 

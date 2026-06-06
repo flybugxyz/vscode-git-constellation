@@ -13,6 +13,9 @@ function App() {
   const [commitMessage, setCommitMessage] = useState('');
   const [showBranches, setShowBranches] = useState(false);
   const [selectedCommitFiles, setSelectedCommitFiles] = useState<{hash: string, files: {status: string, path: string}[]} | null>(null);
+  const [filterBranch, setFilterBranch] = useState<string>('ALL');
+  const [localExpanded, setLocalExpanded] = useState(true);
+  const [remoteExpanded, setRemoteExpanded] = useState(false);
   
   const [filesExpanded, setFilesExpanded] = useState(true);
   const [detailsExpanded, setDetailsExpanded] = useState(true);
@@ -65,8 +68,11 @@ function App() {
     vscode.postMessage({ type: 'getDiff', hash });
   };
 
-  const handleCheckout = (branch: string) => {
-    vscode.postMessage({ type: 'checkout', branch });
+  const handleFilter = (branch: string) => {
+    setFilterBranch(branch);
+    setSelectedIndex(-1);
+    setSelectedCommitFiles(null);
+    vscode.postMessage({ type: 'setFilter', branch });
     setShowBranches(false);
   };
 
@@ -93,6 +99,26 @@ function App() {
     });
   };
 
+  const branches = gitData?.branches?.all || [];
+  const localBranches: { name: string; displayName: string }[] = [];
+  const remoteBranches: { name: string; displayName: string }[] = [];
+
+  branches.forEach((b: string) => {
+    if (b.startsWith('remotes/')) {
+      if (!b.endsWith('/HEAD')) {
+        remoteBranches.push({
+          name: b,
+          displayName: b.replace(/^remotes\//, '')
+        });
+      }
+    } else {
+      localBranches.push({
+        name: b,
+        displayName: b
+      });
+    }
+  });
+
   return (
     <div className="container">
       <div className="tabs">
@@ -111,17 +137,58 @@ function App() {
                   style={{ background: 'none', border: '1px solid var(--vscode-panel-border)', padding: '2px 8px', fontSize: '10px' }}
                   onClick={() => setShowBranches(!showBranches)}
                 >
-                  {gitData?.branches?.current || 'Branches'} ▾
+                  {filterBranch.startsWith('remotes/') ? filterBranch.replace(/^remotes\//, '') : filterBranch} ▾
                 </button>
                 {showBranches && (
                   <div className="branch-popup">
-                    {gitData?.branches?.all.map((b: string) => (
+                    <div 
+                      className={`branch-item ${filterBranch === 'ALL' ? 'active-filter' : ''}`}
+                      onClick={() => handleFilter('ALL')}
+                    >
+                      {filterBranch === 'ALL' && <span style={{ marginRight: '6px' }}>✓</span>}
+                      ALL
+                    </div>
+                    <div 
+                      className={`branch-item ${filterBranch === 'HEAD' ? 'active-filter' : ''}`}
+                      onClick={() => handleFilter('HEAD')}
+                    >
+                      {filterBranch === 'HEAD' && <span style={{ marginRight: '6px' }}>✓</span>}
+                      HEAD
+                    </div>
+                    
+                    <div 
+                      className="branch-group-header"
+                      onClick={() => setLocalExpanded(!localExpanded)}
+                    >
+                      <span className={`codicon ${localExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} style={{ marginRight: '6px', fontSize: '10px' }}></span>
+                      Local Branches ({localBranches.length})
+                    </div>
+                    {localExpanded && localBranches.map((b) => (
                       <div 
-                        key={b} 
-                        className={`branch-item ${b === gitData.branches.current ? 'current' : ''}`}
-                        onClick={() => handleCheckout(b)}
+                        key={b.name} 
+                        className={`branch-item nested ${b.name === filterBranch ? 'active-filter' : ''} ${b.name === gitData.branches.current ? 'current' : ''}`}
+                        onClick={() => handleFilter(b.name)}
                       >
-                        {b}
+                        {b.name === filterBranch && <span style={{ marginRight: '6px' }}>✓</span>}
+                        {b.displayName}
+                      </div>
+                    ))}
+
+                    <div 
+                      className="branch-group-header"
+                      onClick={() => setRemoteExpanded(!remoteExpanded)}
+                    >
+                      <span className={`codicon ${remoteExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} style={{ marginRight: '6px', fontSize: '10px' }}></span>
+                      Remote Branches ({remoteBranches.length})
+                    </div>
+                    {remoteExpanded && remoteBranches.map((b) => (
+                      <div 
+                        key={b.name} 
+                        className={`branch-item nested ${b.name === filterBranch ? 'active-filter' : ''}`}
+                        onClick={() => handleFilter(b.name)}
+                      >
+                        {b.name === filterBranch && <span style={{ marginRight: '6px' }}>✓</span>}
+                        {b.displayName}
                       </div>
                     ))}
                   </div>

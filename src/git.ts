@@ -13,23 +13,34 @@ export class GitService {
     }
   }
 
-  public async getLog(): Promise<any | undefined> {
+  public async getLog(branch: string = 'ALL'): Promise<any | undefined> {
     if (!this._git) {
       console.log('GitService: No git instance available');
       return undefined;
     }
     try {
-      console.log('GitService: Fetching log with parents...');
-      // Use raw log to get custom format including parents (%P) and refs (%D)
-      const result = await this._git.raw([
+      console.log(`GitService: Fetching log with parents for branch/filter: ${branch}...`);
+      
+      const args = [
         'log',
-        '--max-count=100',
-        '--all',
-        '--format=%H%x09%P%x09%D%x09%s%x09%an%x09%ae%x09%at'
-      ]);
+        '--max-count=100'
+      ];
+      if (branch === 'ALL') {
+        args.push('--all');
+      } else if (branch === 'HEAD') {
+        args.push('HEAD');
+      } else if (branch) {
+        args.push(branch);
+      } else {
+        args.push('--all');
+      }
+      
+      args.push('--format=%H%x09%P%x09%D%x09%s%x09%an%x09%ae%x09%at');
+
+      const result = await this._git.raw(args);
       
       const lines = result.trim().split('\n');
-      const commits = lines.map(line => {
+      const commits = lines.filter(Boolean).map(line => {
         const [hash, parents, refs, message, author, email, date] = line.split('\t');
         return {
           hash,
@@ -63,7 +74,7 @@ export class GitService {
   public async getBranches() {
     if (!this._git) return undefined;
     try {
-      return await this._git.branch();
+      return await this._git.branch(['-a']);
     } catch (err) {
       console.error('Error fetching git branches:', err);
       return undefined;

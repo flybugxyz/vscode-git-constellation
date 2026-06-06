@@ -310,3 +310,37 @@ button {
   font-weight: bold;
   color: var(--vscode-button-background);
 }
+
+.branch-divider {
+  height: 1px;
+  background-color: var(--vscode-panel-border);
+  margin: 4px 0;
+}
+
+.branch-item.active-filter {
+  color: var(--vscode-foreground);
+}
+
+.branch-group-header {
+  padding: 6px 8px;
+  font-weight: bold;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  background-color: var(--vscode-sideBar-background);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  border-top: 1px solid var(--vscode-panel-border);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  margin-top: 4px;
+}
+
+.branch-group-header:hover {
+  background-color: var(--jb-hover);
+  color: var(--vscode-foreground);
+}
+
+.branch-item.nested {
+  padding-left: 24px;
+}
