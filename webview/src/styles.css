@@ -102,8 +102,16 @@ tr.selected {
 }
 
 .local-changes-container {
-  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
   font-size: 12px;
+}
+
+.files-list {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .file-item {
@@ -117,9 +125,9 @@ tr.selected {
 }
 
 .commit-box {
-  margin-top: 20px;
-  padding: 10px;
+  padding: 10px 0 0 0;
   border-top: var(--jb-border);
+  flex-shrink: 0;
 }
 
 textarea {
@@ -138,6 +146,21 @@ button {
   border: none;
   padding: 4px 12px;
   cursor: pointer;
+  border-radius: 2px;
+}
+
+button:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+button:active {
+  background-color: var(--vscode-button-hoverBackground);
+  opacity: 0.8;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .diff-container {
@@ -255,6 +278,7 @@ button {
 .status-modified { color: #4a9eff; }
 .status-deleted { color: #ff5555; text-decoration: line-through; }
 .status-renamed { color: #bd93f9; }
+.status-untracked { color: #d16969; }
 
 .tree-item {
   display: flex;

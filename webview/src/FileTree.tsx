@@ -8,6 +8,9 @@ interface FileInfo {
 interface FileTreeProps {
   files: FileInfo[];
   onFileClick: (path: string) => void;
+  checkboxes?: boolean;
+  checkedPaths?: Set<string>;
+  onCheckChange?: (path: string, checked: boolean, filePaths: string[]) => void;
 }
 
 interface TreeNode {
@@ -17,6 +20,37 @@ interface TreeNode {
   isFile: boolean;
   status?: string;
 }
+
+const IndeterminateCheckbox: React.FC<{
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: () => void;
+}> = ({ checked, indeterminate, onChange }) => {
+  const ref = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
+
+  return (
+    <input
+      type="checkbox"
+      ref={ref}
+      checked={checked}
+      onChange={onChange}
+      style={{
+        marginRight: '6px',
+        cursor: 'pointer',
+        width: '13px',
+        height: '13px',
+        flexShrink: 0
+      }}
+      onClick={(e) => e.stopPropagation()}
+    />
+  );
+};
 
 const getFileIconClass = (fileName: string): string => {
   const ext = fileName.split('.').pop()?.toLowerCase();
@@ -57,7 +91,13 @@ const getFileIconClass = (fileName: string): string => {
   }
 };
 
-export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
+export const FileTree: React.FC<FileTreeProps> = ({ 
+  files, 
+  onFileClick, 
+  checkboxes = false, 
+  checkedPaths, 
+  onCheckChange 
+}) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -116,8 +156,20 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
       case 'M': return 'status-modified';
       case 'D': return 'status-deleted';
       case 'R': return 'status-renamed';
+      case '?': return 'status-untracked';
       default: return '';
     }
+  };
+
+  const getFilePathsUnderNode = (node: TreeNode): string[] => {
+    if (node.isFile) {
+      return [node.fullPath];
+    }
+    let paths: string[] = [];
+    for (const childName in node.children) {
+      paths = paths.concat(getFilePathsUnderNode(node.children[childName]));
+    }
+    return paths;
   };
 
   const renderNodes = (nodes: { [key: string]: TreeNode }, depth: number = 0) => {
@@ -133,6 +185,18 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
       const isExpanded = expandedNodes.has(node.fullPath);
       const hasChildren = Object.keys(node.children).length > 0;
 
+      let checkboxState: 'checked' | 'unchecked' | 'indeterminate' = 'unchecked';
+      let filesUnder: string[] = [];
+      if (checkboxes && checkedPaths) {
+        filesUnder = getFilePathsUnderNode(node);
+        const checkedUnder = filesUnder.filter(p => checkedPaths.has(p));
+        if (checkedUnder.length === filesUnder.length) {
+          checkboxState = 'checked';
+        } else if (checkedUnder.length > 0) {
+          checkboxState = 'indeterminate';
+        }
+      }
+
       return (
         <div key={node.fullPath} className="tree-node-container">
           <div 
@@ -145,6 +209,18 @@ export const FileTree: React.FC<FileTreeProps> = ({ files, onFileClick }) => {
               style={{ width: '16px', visibility: !node.isFile && hasChildren ? 'visible' : 'hidden' }}
               onClick={(e) => !node.isFile && toggleNode(node.fullPath, e)}
             ></span>
+            {checkboxes && (
+              <IndeterminateCheckbox
+                checked={checkboxState === 'checked'}
+                indeterminate={checkboxState === 'indeterminate'}
+                onChange={() => {
+                  if (onCheckChange) {
+                    const targetChecked = checkboxState !== 'checked';
+                    onCheckChange(node.fullPath, targetChecked, filesUnder);
+                  }
+                }}
+              />
+            )}
             <span className={`tree-icon codicon ${node.isFile ? getFileIconClass(node.name) : (isExpanded ? 'codicon-folder-opened' : 'codicon-folder')}`}>
             </span>
             <span className="tree-name">{node.name}</span>

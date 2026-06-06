@@ -59,7 +59,14 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           this.refresh();
           break;
         case 'commit':
-          await this._gitService.commit(data.message);
+          await this._gitService.commit(data.message, data.files);
+          this.refresh();
+          break;
+        case 'commitAndPush':
+          const commitSuccess = await this._gitService.commit(data.message, data.files);
+          if (commitSuccess) {
+            await this._gitService.push(data.force);
+          }
           this.refresh();
           break;
         case 'getDiff':
@@ -67,13 +74,20 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           this._view?.webview.postMessage({ type: 'files', hash: data.hash, files });
           break;
         case 'openDiff':
-          const { hash, path } = data;
-          const parentHash = await this._gitService.getParentHash(hash);
-          
-          const leftUri = vscode.Uri.parse(`git-jb-show:${parentHash || ''}/${path}`);
-          const rightUri = vscode.Uri.parse(`git-jb-show:${hash}/${path}`);
-          
-          vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${path} (${hash.substring(0, 7)})`);
+          const { hash, path: filePath } = data;
+          if (hash) {
+            const parentHash = await this._gitService.getParentHash(hash);
+            const leftUri = vscode.Uri.parse(`git-jb-show:${parentHash || ''}/${filePath}`);
+            const rightUri = vscode.Uri.parse(`git-jb-show:${hash}/${filePath}`);
+            vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (${hash.substring(0, 7)})`);
+          } else {
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (workspaceRoot) {
+              const leftUri = vscode.Uri.parse(`git-jb-show:HEAD/${filePath}`);
+              const rightUri = vscode.Uri.file(path.join(workspaceRoot, filePath));
+              vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (Local Changes)`);
+            }
+          }
           break;
         case 'checkout':
           await this._gitService.checkout(data.branch);

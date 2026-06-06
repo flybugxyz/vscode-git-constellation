@@ -3,6 +3,11 @@
   "displayName": "Git JB Style",
   "description": "JetBrains-style Git visualization for VS Code",
   "version": "0.0.1",
+  "publisher": "flybugxyz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flybugxyz/vscode-git-jb-style.git"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },

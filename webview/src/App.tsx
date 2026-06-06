@@ -21,6 +21,28 @@ function App() {
   const [detailsExpanded, setDetailsExpanded] = useState(true);
   const [graphWidth, setGraphWidth] = useState(100);
 
+  const [checkedFiles, setCheckedFiles] = useState<Set<string>>(new Set());
+  const [lastFilesList, setLastFilesList] = useState<string[]>([]);
+  const [forcePush, setForcePush] = useState(false);
+
+  useEffect(() => {
+    if (!gitData?.status?.files) return;
+    const currentPaths = gitData.status.files.map((f: any) => f.path);
+    
+    // Compare currentPaths with lastFilesList
+    const added = currentPaths.filter((p: string) => !lastFilesList.includes(p));
+    const removed = lastFilesList.filter((p: string) => !currentPaths.includes(p));
+    
+    if (added.length > 0 || removed.length > 0) {
+      const newChecked = new Set(checkedFiles);
+      removed.forEach((p: string) => newChecked.delete(p));
+      added.forEach((p: string) => newChecked.add(p));
+      
+      setCheckedFiles(newChecked);
+      setLastFilesList(currentPaths);
+    }
+  }, [gitData?.status?.files]);
+
   useEffect(() => {
     vscode.postMessage({ type: 'ready' });
 
@@ -58,9 +80,40 @@ function App() {
   };
 
   const handleCommit = () => {
-    if (!commitMessage.trim()) return;
-    vscode.postMessage({ type: 'commit', message: commitMessage });
+    if (!commitMessage.trim() || checkedFiles.size === 0) return;
+    vscode.postMessage({ 
+      type: 'commit', 
+      message: commitMessage, 
+      files: Array.from(checkedFiles) 
+    });
     setCommitMessage('');
+  };
+
+  const handleCommitAndPush = () => {
+    if (!commitMessage.trim() || checkedFiles.size === 0) return;
+    vscode.postMessage({ 
+      type: 'commitAndPush', 
+      message: commitMessage, 
+      files: Array.from(checkedFiles),
+      force: forcePush
+    });
+    setCommitMessage('');
+  };
+
+  const handleCheckChange = (path: string, checked: boolean, filePaths: string[]) => {
+    const newChecked = new Set(checkedFiles);
+    filePaths.forEach(p => {
+      if (checked) {
+        newChecked.add(p);
+      } else {
+        newChecked.delete(p);
+      }
+    });
+    setCheckedFiles(newChecked);
+  };
+
+  const handleLocalFileClick = (filePath: string) => {
+    vscode.postMessage({ type: 'openDiff', hash: '', path: filePath });
   };
 
   const handleSelectCommit = (idx: number, hash: string) => {
@@ -124,7 +177,7 @@ function App() {
       <div className="tabs">
         <div className={`tab ${activeTab === 'log' ? 'active' : ''}`} onClick={() => setActiveTab('log')}>Log</div>
         <div className={`tab ${activeTab === 'local' ? 'active' : ''}`} onClick={() => { setActiveTab('local'); setSelectedIndex(-1); setSelectedCommitFiles(null); }}>
-          Local Changes {gitData?.status?.files.length > 0 && `(${gitData.status.files.length})`}
+          Local Changes {gitData?.status?.files && gitData.status.files.length > 0 && `(${gitData.status.files.length})`}
         </div>
       </div>
 
@@ -288,15 +341,31 @@ function App() {
         ) : (
           <div className="local-changes-container" style={{ flex: 1 }}>
             <div className="files-list">
-              {gitData?.status?.files.map((file: any) => (
-                <div key={file.path} className="file-item">
-                  <span style={{ marginRight: '8px', color: file.index === '?' ? '#d16969' : '#e2c08d' }}>
-                    {file.working_dir || file.index}
-                  </span>
-                  {file.path}
-                </div>
-              ))}
-              {gitData?.status?.files.length === 0 && <p>No local changes.</p>}
+              {gitData?.status?.files && gitData.status.files.length > 0 ? (
+                <FileTree
+                  files={gitData.status.files.map((f: any) => {
+                    const getStatusChar = () => {
+                      const ind = f.index;
+                      const wd = f.working_dir;
+                      if (ind === '?' || wd === '?') return '?';
+                      if (ind === 'D' || wd === 'D') return 'D';
+                      if (ind === 'A' || wd === 'A') return 'A';
+                      if (ind === 'R' || wd === 'R') return 'R';
+                      return 'M';
+                    };
+                    return {
+                      path: f.path,
+                      status: getStatusChar()
+                    };
+                  })}
+                  onFileClick={handleLocalFileClick}
+                  checkboxes={true}
+                  checkedPaths={checkedFiles}
+                  onCheckChange={handleCheckChange}
+                />
+              ) : (
+                <p style={{ padding: '10px', fontSize: '11px', opacity: 0.6 }}>No local changes.</p>
+              )}
             </div>
             <div className="commit-box">
               <textarea 
@@ -304,7 +373,30 @@ function App() {
                 value={commitMessage}
                 onChange={(e) => setCommitMessage(e.target.value)}
               />
-              <button onClick={handleCommit} disabled={!commitMessage.trim()}>Commit</button>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <button 
+                  onClick={handleCommit} 
+                  disabled={!commitMessage.trim() || checkedFiles.size === 0}
+                >
+                  Commit
+                </button>
+                <button 
+                  onClick={handleCommitAndPush} 
+                  disabled={!commitMessage.trim() || checkedFiles.size === 0}
+                  style={{ marginLeft: '8px' }}
+                >
+                  Commit and Push
+                </button>
+                <label style={{ marginLeft: '12px', display: 'inline-flex', alignItems: 'center', fontSize: '11px', cursor: 'pointer', userSelect: 'none' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={forcePush} 
+                    onChange={(e) => setForcePush(e.target.checked)} 
+                    style={{ marginRight: '4px', cursor: 'pointer' }}
+                  />
+                  Force Push
+                </label>
+              </div>
             </div>
           </div>
         )}

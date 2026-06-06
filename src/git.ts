@@ -81,13 +81,34 @@ export class GitService {
     }
   }
 
-  public async commit(message: string) {
-    if (!this._git) return;
+  public async commit(message: string, files?: string[]) {
+    if (!this._git) return false;
     try {
-      await this._git.add('.');
-      return await this._git.commit(message);
+      if (files && files.length > 0) {
+        // Stage only the selected files
+        await this._git.add(files);
+        await this._git.commit(message, files);
+      } else {
+        await this._git.add('.');
+        await this._git.commit(message);
+      }
+      return true;
     } catch (err) {
       vscode.window.showErrorMessage(`Commit failed: ${err}`);
+      return false;
+    }
+  }
+
+  public async push(force: boolean = false) {
+    if (!this._git) return false;
+    try {
+      const options = force ? ['--force'] : [];
+      await this._git.push(undefined, undefined, options);
+      vscode.window.showInformationMessage(force ? 'Push (force) succeeded.' : 'Push succeeded.');
+      return true;
+    } catch (err) {
+      vscode.window.showErrorMessage(`Push failed: ${err}`);
+      return false;
     }
   }
 
