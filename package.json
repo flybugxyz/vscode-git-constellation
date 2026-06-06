@@ -29,7 +29,7 @@
         "git-jb.openai.apiUrl": {
           "type": "string",
           "default": "https://api.openai.com/v1/chat/completions",
-          "description": "OpenAI API URL. [Test Configuration](command:git-jb.testOpenAISettings)"
+          "markdownDescription": "OpenAI API URL. [Test Configuration](command:git-jb.testOpenAISettings)"
         },
         "git-jb.openai.apiKey": {
           "type": "string",
