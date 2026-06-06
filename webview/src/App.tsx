@@ -612,7 +612,7 @@ function App() {
                     />
                   </div>
                 )}
-                <table style={{ tableLayout: 'fixed', width: `${graphWidth + descWidth + authorWidth + dateWidth}px`, minWidth: '100%' }}>
+                <table style={{ tableLayout: 'fixed', width: '100%' }}>
                   <thead>
                     <tr>
                       <th style={{ width: `${graphWidth}px` }}>Graph</th>
@@ -646,6 +646,7 @@ function App() {
                           }}
                         />
                       </th>
+                      <th style={{ width: 'auto', borderRight: 'none' }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -667,6 +668,7 @@ function App() {
                         </td>
                         <td>{commit.author_name}</td>
                         <td>{formatDate(commit.date)}</td>
+                        <td style={{ borderRight: 'none' }}></td>
                       </tr>
                     ))}
                   </tbody>
