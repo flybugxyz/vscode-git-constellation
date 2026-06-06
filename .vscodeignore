@@ -1,0 +1,17 @@
+.vscode/**
+.git/**
+.gitignore
+.vscodeignore
+tsconfig.json
+webpack.config.js
+vite.config.ts
+package-lock.json
+src/**
+webview/**
+node_modules/**
+out/**
+docs/**
+GEMINI.md
+*.vsix
+*.js.map
+dist/extension.js.map
