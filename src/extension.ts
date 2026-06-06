@@ -121,10 +121,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
             }
           }
           break;
-        case 'checkout':
-          await this._gitService.checkout(data.branch);
-          this.refresh();
-          break;
+
         case 'setFilter':
           this._currentFilter = data.branch;
           this.refresh();

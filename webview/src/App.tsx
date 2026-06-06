@@ -7,16 +7,12 @@ import { ContextMenu, MenuEntry } from './ContextMenu';
 declare const acquireVsCodeApi: any;
 const vscode = acquireVsCodeApi();
 
-export type MenuState = {
-  x: number;
-  y: number;
-  kind: 'commit' | 'branch' | 'tag';
-  commit?: any;
-  index?: number;
-  branch?: string;
-  isRemote?: boolean;
-  tag?: string;
-};
+type MenuStateBase = { x: number; y: number };
+type CommitMenu = MenuStateBase & { kind: 'commit'; commit: any; index: number };
+type BranchMenu = MenuStateBase & { kind: 'branch'; branch: string; isRemote: boolean };
+type TagMenu = MenuStateBase & { kind: 'tag'; tag: string };
+
+export type MenuState = CommitMenu | BranchMenu | TagMenu;
 
 function App() {
   const [gitData, setGitData] = useState<any>(null);
@@ -30,9 +26,7 @@ function App() {
   const [selectedCommitFiles, setSelectedCommitFiles] = useState<{hash: string, files: {status: string, path: string}[]} | null>(null);
   const [filterBranch, setFilterBranch] = useState<string>('ALL');
   const [localExpanded, setLocalExpanded] = useState(true);
-  const [remoteExpanded, setRemoteExpanded] = useState(false);
-  
-  const [filesExpanded, setFilesExpanded] = useState(true);
+  const [remoteExpanded, setRemoteExpanded] = useState(false);  const [filesExpanded, setFilesExpanded] = useState(true);
   const [detailsExpanded, setDetailsExpanded] = useState(true);
   const [graphWidth, setGraphWidth] = useState(100);
 
@@ -161,7 +155,9 @@ function App() {
     }
   };
 
-  const openContextMenu = (e: React.MouseEvent, data: Omit<MenuState, 'x' | 'y'>) => {
+  const handleCloseMenu = React.useCallback(() => setMenuState(null), []);
+
+  const openContextMenu = (e: React.MouseEvent, data: Omit<CommitMenu, 'x' | 'y'> | Omit<BranchMenu, 'x' | 'y'> | Omit<TagMenu, 'x' | 'y'>) => {
     e.preventDefault();
     e.stopPropagation();
     setShowBranches(false);
@@ -169,20 +165,19 @@ function App() {
       ...data,
       x: e.clientX,
       y: e.clientY
-    });
+    } as MenuState);
   };
 
   const handleMenuAction = (action: string) => {
     if (!menuState) return;
-    const { kind, commit, index, branch, isRemote, tag } = menuState;
-    setMenuState(null);
+    const { kind } = menuState;
 
-    const ref = kind === 'commit' ? commit?.hash : kind === 'branch' ? branch : tag;
+    const ref = kind === 'commit' ? menuState.commit.hash : kind === 'branch' ? menuState.branch : menuState.tag;
 
     switch (action) {
       // Shared actions
       case 'compareWithCurrent':
-        if (kind === 'commit' && index !== undefined) setSelectedIndex(index);
+        if (menuState.kind === 'commit') setSelectedIndex(menuState.index);
         vscode.postMessage({ type: 'compareRef', ref });
         break;
       case 'openInBrowser':
@@ -200,6 +195,21 @@ function App() {
 
       // Commit-specific actions
       case 'copySHA':
+      case 'copyShortSHA':
+      case 'copyMessage':
+      case 'copyURL':
+      case 'createTag':
+      case 'createWorktree':
+      case 'cherryPick':
+      case 'cherryPickWithWorktree':
+      case 'revertCommit':
+      case 'viewDetails':
+      case 'viewDiff': {
+        if (menuState.kind !== 'commit') break;
+        const { commit, index } = menuState;
+        
+        switch (action) {
+          case 'copySHA':
         vscode.postMessage({ type: 'copySHA', hash: commit.hash });
         break;
       case 'copyShortSHA':
@@ -233,12 +243,30 @@ function App() {
         setDetailsExpanded(true);
         vscode.postMessage({ type: 'getDiff', hash: commit.hash });
         break;
-      case 'viewDiff':
-        vscode.postMessage({ type: 'viewDiff', hash: commit.hash });
+          case 'viewDiff':
+            vscode.postMessage({ type: 'viewDiff', hash: commit.hash });
+            break;
+        }
         break;
+      }
 
       // Branch-specific actions
       case 'checkoutBranch':
+      case 'pullBranch':
+      case 'pushBranch':
+      case 'pushBranchTo':
+      case 'renameBranch':
+      case 'deleteBranch':
+      case 'compareBranchWith':
+      case 'pinBranch':
+      case 'unpinBranch':
+      case 'setUpstream':
+      case 'showInGraph': {
+        if (menuState.kind !== 'branch') break;
+        const { branch, isRemote } = menuState;
+        
+        switch (action) {
+          case 'checkoutBranch':
         vscode.postMessage({ type: 'checkoutBranch', branch });
         break;
       case 'pullBranch':
@@ -268,27 +296,42 @@ function App() {
       case 'setUpstream':
         vscode.postMessage({ type: 'setUpstream', branch });
         break;
-      case 'showInGraph':
-        if (branch) handleFilter(branch);
+          case 'showInGraph':
+            handleFilter(branch);
+            break;
+        }
         break;
+      }
 
       // Tag-specific actions
       case 'viewTagDetails':
+      case 'deleteTag':
+      case 'copyTagName': {
+        if (menuState.kind !== 'tag') break;
+        const { tag } = menuState;
+        
+        switch (action) {
+          case 'viewTagDetails':
         vscode.postMessage({ type: 'viewTagDetails', tag });
         break;
       case 'deleteTag':
         vscode.postMessage({ type: 'deleteTag', tag });
         break;
-      case 'copyTagName':
-        vscode.postMessage({ type: 'copyTagName', tag });
+          case 'copyTagName':
+            vscode.postMessage({ type: 'copyTagName', tag });
+            break;
+        }
         break;
+      }
     }
+    
+    setMenuState(null);
   };
 
   const getCommitMenuItems = (): MenuEntry[] => {
     return [
       {
-        label: 'Copy ▸', icon: 'copy',
+        label: 'Copy', icon: 'copy',
         submenu: [
           { label: 'Copy SHA', icon: 'copy', action: 'copySHA' },
           { label: 'Copy Short SHA', icon: 'copy', action: 'copyShortSHA' },
@@ -315,7 +358,8 @@ function App() {
   };
 
   const getBranchMenuItems = (): MenuEntry[] => {
-    const { branch, isRemote } = menuState!;
+    if (menuState?.kind !== 'branch') return [];
+    const { branch, isRemote } = menuState;
     const isCurrent = branch === gitData?.branches?.current;
     return [
       { label: 'Checkout Branch', icon: 'check', action: 'checkoutBranch', disabled: isCurrent },
@@ -697,7 +741,7 @@ function App() {
           y={menuState.y}
           items={menuState.kind === 'commit' ? getCommitMenuItems() : menuState.kind === 'branch' ? getBranchMenuItems() : getTagMenuItems()}
           onAction={handleMenuAction}
-          onClose={() => setMenuState(null)}
+          onClose={handleCloseMenu}
         />
       )}
     </div>

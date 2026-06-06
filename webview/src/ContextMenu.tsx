@@ -52,7 +52,7 @@ export function ContextMenu({ x, y, items, onAction, onClose }: ContextMenuProps
 
       setAdjustedPos({ x: newX, y: newY });
     }
-  }, [x, y, visibleItems]);
+  }, [x, y]);
 
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
@@ -68,12 +68,13 @@ export function ContextMenu({ x, y, items, onAction, onClose }: ContextMenuProps
     };
 
     // Need timeout so it doesn't immediately close from the click that opened it
-    setTimeout(() => {
+    const timerId = setTimeout(() => {
       window.addEventListener('mousedown', handleGlobalClick);
       window.addEventListener('keydown', handleKeyDown);
     }, 0);
 
     return () => {
+      clearTimeout(timerId);
       window.removeEventListener('mousedown', handleGlobalClick);
       window.removeEventListener('keydown', handleKeyDown);
     };
