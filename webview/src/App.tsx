@@ -47,6 +47,12 @@ function App() {
   });
   const [resizing, setResizing] = useState<{ col: 'desc' | 'author' | 'date'; startX: number; startWidth: number } | null>(null);
 
+  const [commitBoxHeight, setCommitBoxHeight] = useState<number>(() => {
+    const saved = localStorage.getItem('git-jb-commit-box-height');
+    return saved ? parseInt(saved, 10) : 130;
+  });
+  const [resizingCommitBox, setResizingCommitBox] = useState<{ startY: number; startHeight: number } | null>(null);
+
   const [checkedFiles, setCheckedFiles] = useState<Set<string>>(new Set());
   const [lastFilesList, setLastFilesList] = useState<string[]>([]);
   const [forcePush, setForcePush] = useState(false);
@@ -131,7 +137,32 @@ function App() {
     };
   }, [resizing]);
 
+  useEffect(() => {
+    if (!resizingCommitBox) return;
 
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaY = resizingCommitBox.startY - e.clientY;
+      const newHeight = Math.max(80, Math.min(window.innerHeight - 100, resizingCommitBox.startHeight + deltaY));
+      setCommitBoxHeight(newHeight);
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      const deltaY = resizingCommitBox.startY - e.clientY;
+      const newHeight = Math.max(80, Math.min(window.innerHeight - 100, resizingCommitBox.startHeight + deltaY));
+      localStorage.setItem('git-jb-commit-box-height', String(newHeight));
+      setResizingCommitBox(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.classList.add('resizing-row');
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.classList.remove('resizing-row');
+    };
+  }, [resizingCommitBox]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -853,7 +884,14 @@ function App() {
                 <p style={{ padding: '10px', fontSize: '11px', opacity: 0.6 }}>No local changes.</p>
               )}
             </div>
-            <div className="commit-box" style={{ position: 'relative' }}>
+            <div className="commit-box" style={{ height: `${commitBoxHeight}px`, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+              <div 
+                className="resize-handle-row"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setResizingCommitBox({ startY: e.clientY, startHeight: commitBoxHeight });
+                }}
+              />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Commit Message</span>
                 <button
@@ -870,8 +908,9 @@ function App() {
                 placeholder="Commit message" 
                 value={commitMessage}
                 onChange={(e) => setCommitMessage(e.target.value)}
+                style={{ flex: 1, resize: 'none' }}
               />
-              <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                 <button 
                   onClick={handleCommit} 
                   disabled={!commitMessage.trim() || checkedFiles.size === 0}
