@@ -19,6 +19,17 @@ GitConstellation is a VS Code extension that brings the highly acclaimed Git vis
 *   **Branch Switcher**: Easily checkout local branches with a quick-access dropdown.
 *   **Native Look & Feel**: Uses VS Code's standard Codicons and theme-aware styling for a seamless experience.
 
+### 📸 Screenshots
+
+#### Log View & Commit History
+![Log View](docs/commitList.png)
+
+#### Local Changes Panel
+![Local Changes](docs/localChanges.png)
+
+#### AI Commit Message Settings
+![AI Settings](docs/AISettings.png)
+
 ### 🚀 Getting Started
 
 1.  Clone this repository.
@@ -43,6 +54,17 @@ GitConstellation 是一款 VS Code 插件，旨在将深受好评的 JetBrains I
 *   **本地更改管理**：专门的标签页用于查看待提交内容，并直接在面板中进行提交。
 *   **分支切换**：通过顶部的快速访问下拉菜单轻松切换本地分支。
 *   **原生集成**：使用 VS Code 标准的 Codicons 图标库，并适配编辑器主题，确保完美的视觉集成。
+
+### 📸 界面截图
+
+#### 日志视图与提交历史
+![日志视图](docs/commitList.png)
+
+#### 本地更改面板
+![本地更改](docs/localChanges.png)
+
+#### AI 提交信息设置
+![AI 设置](docs/AISettings.png)
 
 ### 🚀 快速开始
 
