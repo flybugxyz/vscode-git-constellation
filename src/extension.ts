@@ -151,22 +151,36 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           }
           break;
         }
-        case 'openInBrowser': {
-          const browserUrl = await this._gitService.getCommitUrl(data.hash);
+        case 'openRefInBrowser': {
+          let browserUrl;
+          if (data.refType === 'commit') {
+            browserUrl = await this._gitService.getCommitUrl(data.ref);
+          } else if (data.refType === 'branch') {
+            browserUrl = await this._gitService.getBranchUrl(data.ref);
+          } else if (data.refType === 'tag') {
+            browserUrl = await this._gitService.getTagUrl(data.ref);
+          }
           if (browserUrl) {
             vscode.env.openExternal(vscode.Uri.parse(browserUrl));
           } else {
-            vscode.window.showErrorMessage('Failed to resolve remote commit URL');
+            vscode.window.showErrorMessage(`Failed to resolve remote URL for ${data.refType}`);
           }
           break;
         }
-        case 'createBranch': {
+        case 'createBranchFrom': {
+          const promptLabel = data.refType === 'commit' ? `commit ${data.ref.substring(0, 7)}` : 
+                              data.refType === 'tag' ? `tag '${data.ref}'` : 
+                              `'${data.ref}'`;
           const branchName = await vscode.window.showInputBox({
-            prompt: `Create Branch from commit ${data.hash.substring(0, 7)}`,
+            prompt: `Create Branch from ${promptLabel}`,
             placeHolder: 'Enter branch name'
           });
           if (branchName && branchName.trim()) {
-            await this._gitService.createBranch(branchName.trim(), data.hash);
+            if (data.refType === 'commit') {
+              await this._gitService.createBranch(branchName.trim(), data.ref);
+            } else {
+              await this._gitService.createBranchFrom(branchName.trim(), data.ref);
+            }
             this.refresh();
           }
           break;
@@ -223,19 +237,19 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           await this._gitService.revertCommit(data.hash);
           this.refresh();
           break;
-        case 'rebase':
-          await this._gitService.rebase(data.hash);
+        case 'rebaseRef':
+          await this._gitService.rebase(data.ref);
           this.refresh();
           break;
-        case 'merge':
-          await this._gitService.merge(data.hash);
+        case 'mergeRef':
+          await this._gitService.merge(data.ref);
           this.refresh();
           break;
-        case 'compare': {
-          const compareFiles = await this._gitService.getCompareFiles(data.hash);
+        case 'compareRef': {
+          const compareFiles = await this._gitService.getCompareFiles(data.ref);
           this._view?.webview.postMessage({
             type: 'compareFiles',
-            hash: data.hash,
+            hash: data.ref,
             files: compareFiles
           });
           break;
@@ -248,25 +262,6 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
         }
         case 'checkoutBranch':
           await this._gitService.checkout(data.branch);
-          this.refresh();
-          break;
-        case 'newBranchFrom': {
-          const branchName = await vscode.window.showInputBox({
-            prompt: `Create New Branch from '${data.branch}'`,
-            placeHolder: 'Enter new branch name'
-          });
-          if (branchName && branchName.trim()) {
-            await this._gitService.createBranchFrom(branchName.trim(), data.branch);
-            this.refresh();
-          }
-          break;
-        }
-        case 'mergeBranch':
-          await this._gitService.merge(data.branch);
-          this.refresh();
-          break;
-        case 'rebaseBranch':
-          await this._gitService.rebase(data.branch);
           this.refresh();
           break;
         case 'pullBranch':
@@ -313,15 +308,6 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           }
           break;
         }
-        case 'compareBranch': {
-          const compareFiles = await this._gitService.compareBranches('HEAD', data.branch);
-          this._view?.webview.postMessage({
-            type: 'compareFiles',
-            hash: data.branch,
-            files: compareFiles
-          });
-          break;
-        }
         case 'compareBranchWith': {
           const branchesResult = await this._gitService.getBranches();
           if (branchesResult) {
@@ -340,15 +326,6 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           }
           break;
         }
-        case 'openBranchInBrowser': {
-          const url = await this._gitService.getBranchUrl(data.branch);
-          if (url) {
-            vscode.env.openExternal(vscode.Uri.parse(url));
-          } else {
-            vscode.window.showErrorMessage('Failed to resolve branch remote URL');
-          }
-          break;
-        }
         case 'setUpstream': {
           const upstream = await vscode.window.showInputBox({
             prompt: `Set Upstream for '${data.branch}'`,
@@ -364,26 +341,6 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           const uri = vscode.Uri.parse(`git-jb-tag:${data.tag}.txt`);
           const doc = await vscode.workspace.openTextDocument(uri);
           await vscode.window.showTextDocument(doc, { preview: false });
-          break;
-        }
-        case 'createBranchFromTag': {
-          const branchName = await vscode.window.showInputBox({
-            prompt: `Create branch from tag '${data.tag}'`,
-            placeHolder: 'Enter branch name'
-          });
-          if (branchName && branchName.trim()) {
-            await this._gitService.createBranchFrom(branchName.trim(), data.tag);
-            this.refresh();
-          }
-          break;
-        }
-        case 'compareTag': {
-          const compareFiles = await this._gitService.compareBranches('HEAD', data.tag);
-          this._view?.webview.postMessage({
-            type: 'compareFiles',
-            hash: data.tag,
-            files: compareFiles
-          });
           break;
         }
         case 'deleteTag': {
@@ -410,15 +367,6 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           await vscode.env.clipboard.writeText(data.tag);
           vscode.window.showInformationMessage('Tag name copied to clipboard');
           break;
-        case 'openTagInBrowser': {
-          const url = await this._gitService.getTagUrl(data.tag);
-          if (url) {
-            vscode.env.openExternal(vscode.Uri.parse(url));
-          } else {
-            vscode.window.showErrorMessage('Failed to resolve tag remote URL');
-          }
-          break;
-        }
       }
     });
   }

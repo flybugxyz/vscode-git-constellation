@@ -2,17 +2,27 @@ import React, { useEffect, useState } from 'react';
 import './styles.css';
 import { GitGraph } from './GitGraph';
 import { FileTree } from './FileTree';
+import { ContextMenu, MenuEntry } from './ContextMenu';
 
 declare const acquireVsCodeApi: any;
 const vscode = acquireVsCodeApi();
 
+export type MenuState = {
+  x: number;
+  y: number;
+  kind: 'commit' | 'branch' | 'tag';
+  commit?: any;
+  index?: number;
+  branch?: string;
+  isRemote?: boolean;
+  tag?: string;
+};
+
 function App() {
   const [gitData, setGitData] = useState<any>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
-  const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, commit: any, index: number } | null>(null);
+  const [menuState, setMenuState] = useState<MenuState | null>(null);
   const [isCompareMode, setIsCompareMode] = useState(false);
-  const [branchContextMenu, setBranchContextMenu] = useState<{ visible: boolean, x: number, y: number, branch: string, isRemote: boolean } | null>(null);
-  const [tagContextMenu, setTagContextMenu] = useState<{ visible: boolean, x: number, y: number, tag: string } | null>(null);
   const [pinnedBranches, setPinnedBranches] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'log' | 'local'>('log');
   const [commitMessage, setCommitMessage] = useState('');
@@ -71,15 +81,6 @@ function App() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  useEffect(() => {
-    const handleWindowClick = () => {
-      setContextMenu(null);
-      setBranchContextMenu(null);
-      setTagContextMenu(null);
-    };
-    window.addEventListener('click', handleWindowClick);
-    return () => window.removeEventListener('click', handleWindowClick);
-  }, []);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -160,190 +161,44 @@ function App() {
     }
   };
 
-  const handleBranchContextMenu = (e: React.MouseEvent, branch: string, isRemote: boolean) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenu(null);
-    setTagContextMenu(null);
-
-    const menuWidth = 220;
-    const menuHeight = 400;
-    
-    let x = e.clientX;
-    let y = e.clientY;
-
-    if (x + menuWidth > window.innerWidth) {
-      x = window.innerWidth - menuWidth - 10;
-    }
-    if (y + menuHeight > window.innerHeight) {
-      y = window.innerHeight - menuHeight - 10;
-    }
-    if (x < 0) x = 10;
-    if (y < 0) y = 10;
-
-    setBranchContextMenu({
-      visible: true,
-      x,
-      y,
-      branch,
-      isRemote
-    });
-  };
-
-  const handleTagContextMenu = (e: React.MouseEvent, tag: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenu(null);
-    setBranchContextMenu(null);
-
-    const menuWidth = 220;
-    const menuHeight = 200;
-    
-    let x = e.clientX;
-    let y = e.clientY;
-
-    if (x + menuWidth > window.innerWidth) {
-      x = window.innerWidth - menuWidth - 10;
-    }
-    if (y + menuHeight > window.innerHeight) {
-      y = window.innerHeight - menuHeight - 10;
-    }
-    if (x < 0) x = 10;
-    if (y < 0) y = 10;
-
-    setTagContextMenu({
-      visible: true,
-      x,
-      y,
-      tag
-    });
-  };
-
-  const handleBranchContextAction = (action: string) => {
-    if (!branchContextMenu) return;
-    const { branch, isRemote } = branchContextMenu;
-    setBranchContextMenu(null);
-
-    switch (action) {
-      case 'checkout':
-        vscode.postMessage({ type: 'checkoutBranch', branch });
-        break;
-      case 'newBranch':
-        vscode.postMessage({ type: 'newBranchFrom', branch });
-        break;
-      case 'merge':
-        vscode.postMessage({ type: 'mergeBranch', branch });
-        break;
-      case 'rebase':
-        vscode.postMessage({ type: 'rebaseBranch', branch });
-        break;
-      case 'pull':
-        vscode.postMessage({ type: 'pullBranch', branch });
-        break;
-      case 'push':
-        vscode.postMessage({ type: 'pushBranch', branch });
-        break;
-      case 'pushTo':
-        vscode.postMessage({ type: 'pushBranchTo', branch });
-        break;
-      case 'rename':
-        vscode.postMessage({ type: 'renameBranch', branch });
-        break;
-      case 'delete':
-        vscode.postMessage({ type: 'deleteBranch', branch, isRemote });
-        break;
-      case 'compare':
-        vscode.postMessage({ type: 'compareBranch', branch });
-        break;
-      case 'compareWith':
-        vscode.postMessage({ type: 'compareBranchWith', branch });
-        break;
-      case 'pin': {
-        const newPinned = new Set(pinnedBranches);
-        newPinned.add(branch);
-        setPinnedBranches(newPinned);
-        break;
-      }
-      case 'unpin': {
-        const newPinned = new Set(pinnedBranches);
-        newPinned.delete(branch);
-        setPinnedBranches(newPinned);
-        break;
-      }
-      case 'openInBrowser':
-        vscode.postMessage({ type: 'openBranchInBrowser', branch });
-        break;
-      case 'setUpstream':
-        vscode.postMessage({ type: 'setUpstream', branch });
-        break;
-      case 'showInGraph':
-        handleFilter(branch);
-        break;
-    }
-  };
-
-  const handleTagContextAction = (action: string) => {
-    if (!tagContextMenu) return;
-    const { tag } = tagContextMenu;
-    setTagContextMenu(null);
-
-    switch (action) {
-      case 'viewDetails':
-        vscode.postMessage({ type: 'viewTagDetails', tag });
-        break;
-      case 'createBranch':
-        vscode.postMessage({ type: 'createBranchFromTag', tag });
-        break;
-      case 'compare':
-        vscode.postMessage({ type: 'compareTag', tag });
-        break;
-      case 'delete':
-        vscode.postMessage({ type: 'deleteTag', tag });
-        break;
-      case 'copyName':
-        vscode.postMessage({ type: 'copyTagName', tag });
-        break;
-      case 'openInBrowser':
-        vscode.postMessage({ type: 'openTagInBrowser', tag });
-        break;
-    }
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, commit: any, idx: number) => {
+  const openContextMenu = (e: React.MouseEvent, data: Omit<MenuState, 'x' | 'y'>) => {
     e.preventDefault();
     e.stopPropagation();
     setShowBranches(false);
-
-    const menuWidth = 220;
-    const menuHeight = 450;
-    
-    let x = e.clientX;
-    let y = e.clientY;
-
-    if (x + menuWidth > window.innerWidth) {
-      x = window.innerWidth - menuWidth - 10;
-    }
-    if (y + menuHeight > window.innerHeight) {
-      y = window.innerHeight - menuHeight - 10;
-    }
-    if (x < 0) x = 10;
-    if (y < 0) y = 10;
-
-    setContextMenu({
-      visible: true,
-      x,
-      y,
-      commit,
-      index: idx
+    setMenuState({
+      ...data,
+      x: e.clientX,
+      y: e.clientY
     });
   };
 
-  const handleContextAction = (action: string) => {
-    if (!contextMenu || !contextMenu.commit) return;
-    const { commit, index } = contextMenu;
-    setContextMenu(null);
+  const handleMenuAction = (action: string) => {
+    if (!menuState) return;
+    const { kind, commit, index, branch, isRemote, tag } = menuState;
+    setMenuState(null);
+
+    const ref = kind === 'commit' ? commit?.hash : kind === 'branch' ? branch : tag;
 
     switch (action) {
+      // Shared actions
+      case 'compareWithCurrent':
+        if (kind === 'commit' && index !== undefined) setSelectedIndex(index);
+        vscode.postMessage({ type: 'compareRef', ref });
+        break;
+      case 'openInBrowser':
+        vscode.postMessage({ type: 'openRefInBrowser', ref, refType: kind });
+        break;
+      case 'createBranchFrom':
+        vscode.postMessage({ type: 'createBranchFrom', ref, refType: kind });
+        break;
+      case 'mergeRef':
+        vscode.postMessage({ type: 'mergeRef', ref });
+        break;
+      case 'rebaseRef':
+        vscode.postMessage({ type: 'rebaseRef', ref });
+        break;
+
+      // Commit-specific actions
       case 'copySHA':
         vscode.postMessage({ type: 'copySHA', hash: commit.hash });
         break;
@@ -355,9 +210,6 @@ function App() {
         break;
       case 'copyURL':
         vscode.postMessage({ type: 'copyURL', hash: commit.hash });
-        break;
-      case 'createBranch':
-        vscode.postMessage({ type: 'createBranch', hash: commit.hash });
         break;
       case 'createTag':
         vscode.postMessage({ type: 'createTag', hash: commit.hash });
@@ -374,30 +226,132 @@ function App() {
       case 'revertCommit':
         vscode.postMessage({ type: 'revertCommit', hash: commit.hash });
         break;
-      case 'rebase':
-        vscode.postMessage({ type: 'rebase', hash: commit.hash });
-        break;
-      case 'merge':
-        vscode.postMessage({ type: 'merge', hash: commit.hash });
-        break;
-      case 'compare':
-        setSelectedIndex(index);
-        vscode.postMessage({ type: 'compare', hash: commit.hash });
-        break;
       case 'viewDetails':
-        setSelectedIndex(index);
+        if (index !== undefined) setSelectedIndex(index);
         setActiveTab('log');
         setFilesExpanded(true);
         setDetailsExpanded(true);
         vscode.postMessage({ type: 'getDiff', hash: commit.hash });
         break;
-      case 'openInBrowser':
-        vscode.postMessage({ type: 'openInBrowser', hash: commit.hash });
-        break;
       case 'viewDiff':
         vscode.postMessage({ type: 'viewDiff', hash: commit.hash });
         break;
+
+      // Branch-specific actions
+      case 'checkoutBranch':
+        vscode.postMessage({ type: 'checkoutBranch', branch });
+        break;
+      case 'pullBranch':
+        vscode.postMessage({ type: 'pullBranch', branch });
+        break;
+      case 'pushBranch':
+        vscode.postMessage({ type: 'pushBranch', branch });
+        break;
+      case 'pushBranchTo':
+        vscode.postMessage({ type: 'pushBranchTo', branch });
+        break;
+      case 'renameBranch':
+        vscode.postMessage({ type: 'renameBranch', branch });
+        break;
+      case 'deleteBranch':
+        vscode.postMessage({ type: 'deleteBranch', branch, isRemote });
+        break;
+      case 'compareBranchWith':
+        vscode.postMessage({ type: 'compareBranchWith', branch });
+        break;
+      case 'pinBranch':
+        setPinnedBranches(prev => new Set(prev).add(branch!));
+        break;
+      case 'unpinBranch':
+        setPinnedBranches(prev => { const s = new Set(prev); s.delete(branch!); return s; });
+        break;
+      case 'setUpstream':
+        vscode.postMessage({ type: 'setUpstream', branch });
+        break;
+      case 'showInGraph':
+        if (branch) handleFilter(branch);
+        break;
+
+      // Tag-specific actions
+      case 'viewTagDetails':
+        vscode.postMessage({ type: 'viewTagDetails', tag });
+        break;
+      case 'deleteTag':
+        vscode.postMessage({ type: 'deleteTag', tag });
+        break;
+      case 'copyTagName':
+        vscode.postMessage({ type: 'copyTagName', tag });
+        break;
     }
+  };
+
+  const getCommitMenuItems = (): MenuEntry[] => {
+    return [
+      {
+        label: 'Copy ▸', icon: 'copy',
+        submenu: [
+          { label: 'Copy SHA', icon: 'copy', action: 'copySHA' },
+          { label: 'Copy Short SHA', icon: 'copy', action: 'copyShortSHA' },
+          { label: 'Copy Message', icon: 'copy', action: 'copyMessage' },
+          { label: 'Copy URL', icon: 'link', action: 'copyURL' }
+        ]
+      },
+      { type: 'separator' },
+      { label: 'Create Branch...', icon: 'git-branch', action: 'createBranchFrom' },
+      { label: 'Create Tag...', icon: 'tag', action: 'createTag' },
+      { label: 'Create Worktree...', icon: 'worktree', action: 'createWorktree' },
+      { type: 'separator' },
+      { label: 'Cherry Pick', icon: 'git-merge', action: 'cherryPick' },
+      { label: 'Cherry Pick (with worktree)', icon: 'git-merge', action: 'cherryPickWithWorktree' },
+      { label: 'Revert Commit', icon: 'discard', action: 'revertCommit', danger: true },
+      { label: 'Rebase Current Branch onto This', icon: 'sync', action: 'rebaseRef' },
+      { label: 'Merge into Current Branch...', icon: 'merge', action: 'mergeRef' },
+      { type: 'separator' },
+      { label: 'Compare with Current Branch', icon: 'git-compare', action: 'compareWithCurrent' },
+      { label: 'View Details', icon: 'inspect', action: 'viewDetails' },
+      { label: 'Open in Browser', icon: 'link-external', action: 'openInBrowser' },
+      { label: 'View Diff', icon: 'diff', action: 'viewDiff' }
+    ];
+  };
+
+  const getBranchMenuItems = (): MenuEntry[] => {
+    const { branch, isRemote } = menuState!;
+    const isCurrent = branch === gitData?.branches?.current;
+    return [
+      { label: 'Checkout Branch', icon: 'check', action: 'checkoutBranch', disabled: isCurrent },
+      { label: 'New Branch from...', icon: 'git-branch', action: 'createBranchFrom' },
+      { type: 'separator' },
+      { label: 'Merge into Current Branch...', icon: 'git-merge', action: 'mergeRef', disabled: isCurrent },
+      { label: 'Rebase Current Branch onto This', icon: 'sync', action: 'rebaseRef', disabled: isCurrent },
+      { label: 'Pull into Current Branch', icon: 'cloud-download', action: 'pullBranch' },
+      { label: 'Push...', icon: 'cloud-upload', action: 'pushBranch' },
+      { label: 'Push to Remote...', icon: 'cloud-upload', action: 'pushBranchTo' },
+      { type: 'separator' },
+      { label: 'Rename Branch...', icon: 'edit', action: 'renameBranch', hidden: isRemote },
+      { label: 'Delete Branch...', icon: 'trash', action: 'deleteBranch', danger: true },
+      { type: 'separator' },
+      { label: 'Compare with Current Branch', icon: 'git-compare', action: 'compareWithCurrent' },
+      { label: 'Compare with Branch...', icon: 'git-compare', action: 'compareBranchWith' },
+      { type: 'separator' },
+      pinnedBranches.has(branch!) 
+        ? { label: 'Unpin Branch', icon: 'pin', action: 'unpinBranch' }
+        : { label: 'Pin Branch', icon: 'pin', action: 'pinBranch' },
+      { label: 'Open in Browser', icon: 'link-external', action: 'openInBrowser' },
+      { label: 'Set as Upstream Branch', icon: 'link', action: 'setUpstream', hidden: isRemote },
+      { label: 'Show in Commit Graph', icon: 'graph', action: 'showInGraph' }
+    ];
+  };
+
+  const getTagMenuItems = (): MenuEntry[] => {
+    return [
+      { label: 'View Tag Details', icon: 'inspect', action: 'viewTagDetails' },
+      { label: 'Create Branch from Tag...', icon: 'git-branch', action: 'createBranchFrom' },
+      { label: 'Compare with Current Branch', icon: 'git-compare', action: 'compareWithCurrent' },
+      { label: 'Delete Tag...', icon: 'trash', action: 'deleteTag', danger: true },
+      { type: 'separator' },
+      { label: 'Copy Tag Name', icon: 'copy', action: 'copyTagName' },
+      { label: 'Open in Browser', icon: 'link-external', action: 'openInBrowser' }
+    ];
   };
 
   const selectedCommit = selectedIndex >= 0 ? gitData?.log?.all[selectedIndex] : null;
@@ -416,9 +370,9 @@ function App() {
 
       const onCtxMenu = (e: React.MouseEvent) => {
         if (type === 'tag') {
-          handleTagContextMenu(e, label);
+          openContextMenu(e, { kind: 'tag', tag: label });
         } else {
-          handleBranchContextMenu(e, label, type === 'remote');
+          openContextMenu(e, { kind: 'branch', branch: label, isRemote: type === 'remote' });
         }
       };
 
@@ -506,7 +460,7 @@ function App() {
                               key={`pinned-${bName}`} 
                               className={`branch-item nested ${bName === filterBranch ? 'active-filter' : ''}`}
                               onClick={() => handleFilter(bName)}
-                              onContextMenu={(e) => handleBranchContextMenu(e, bName, isRemote)}
+                              onContextMenu={(e) => openContextMenu(e, { kind: 'branch', branch: bName, isRemote })}
                             >
                               {bName === filterBranch && <span style={{ marginRight: '6px' }}>✓</span>}
                               {displayName}
@@ -528,7 +482,7 @@ function App() {
                         key={b.name} 
                         className={`branch-item nested ${b.name === filterBranch ? 'active-filter' : ''} ${b.name === gitData.branches.current ? 'current' : ''}`}
                         onClick={() => handleFilter(b.name)}
-                        onContextMenu={(e) => handleBranchContextMenu(e, b.name, false)}
+                        onContextMenu={(e) => openContextMenu(e, { kind: 'branch', branch: b.name, isRemote: false })}
                       >
                         {b.name === filterBranch && <span style={{ marginRight: '6px' }}>✓</span>}
                         {b.displayName}
@@ -547,7 +501,7 @@ function App() {
                         key={b.name} 
                         className={`branch-item nested ${b.name === filterBranch ? 'active-filter' : ''}`}
                         onClick={() => handleFilter(b.name)}
-                        onContextMenu={(e) => handleBranchContextMenu(e, b.name, true)}
+                        onContextMenu={(e) => openContextMenu(e, { kind: 'branch', branch: b.name, isRemote: true })}
                       >
                         {b.name === filterBranch && <span style={{ marginRight: '6px' }}>✓</span>}
                         {b.displayName}
@@ -582,7 +536,7 @@ function App() {
                         key={commit.hash} 
                         className={selectedIndex === idx ? 'selected' : ''}
                         onClick={() => handleSelectCommit(idx, commit.hash)}
-                        onContextMenu={(e) => handleContextMenu(e, commit, idx)}
+                        onContextMenu={(e) => openContextMenu(e, { kind: 'commit', commit, index: idx })}
                       >
                         <td style={{ width: `${graphWidth}px` }}></td>
                         <td title={commit.message}>
@@ -737,214 +691,14 @@ function App() {
           </div>
         )}
       </div>
-      {contextMenu && contextMenu.visible && (
-        <div 
-          className="context-menu"
-          style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="context-menu-item" onClick={() => handleContextAction('copySHA')}>
-            <span className="codicon codicon-copy"></span>
-            <span className="context-menu-label">Copy SHA</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('copyShortSHA')}>
-            <span className="codicon codicon-copy"></span>
-            <span className="context-menu-label">Copy Short SHA</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('copyMessage')}>
-            <span className="codicon codicon-copy"></span>
-            <span className="context-menu-label">Copy Message</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('copyURL')}>
-            <span className="codicon codicon-link"></span>
-            <span className="context-menu-label">Copy URL</span>
-          </div>
-          
-          <div className="context-menu-separator"></div>
-          
-          <div className="context-menu-item" onClick={() => handleContextAction('createBranch')}>
-            <span className="codicon codicon-git-branch"></span>
-            <span className="context-menu-label">Create Branch...</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('createTag')}>
-            <span className="codicon codicon-tag"></span>
-            <span className="context-menu-label">Create Tag...</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('createWorktree')}>
-            <span className="codicon codicon-worktree"></span>
-            <span className="context-menu-label">Create Worktree...</span>
-          </div>
-          
-          <div className="context-menu-separator"></div>
-          
-          <div className="context-menu-item" onClick={() => handleContextAction('cherryPick')}>
-            <span className="codicon codicon-git-merge"></span>
-            <span className="context-menu-label">Cherry Pick</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('cherryPickWithWorktree')}>
-            <span className="codicon codicon-git-merge"></span>
-            <span className="context-menu-label">Cherry Pick (with worktree)</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('revertCommit')}>
-            <span className="codicon codicon-discard"></span>
-            <span className="context-menu-label">Revert Commit</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('rebase')}>
-            <span className="codicon codicon-sync"></span>
-            <span className="context-menu-label">Rebase Current Branch onto This</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('merge')}>
-            <span className="codicon codicon-merge"></span>
-            <span className="context-menu-label">Merge into Current Branch...</span>
-          </div>
-          
-          <div className="context-menu-separator"></div>
-          
-          <div className="context-menu-item" onClick={() => handleContextAction('compare')}>
-            <span className="codicon codicon-git-compare"></span>
-            <span className="context-menu-label">Compare with Current Branch</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('viewDetails')}>
-            <span className="codicon codicon-inspect"></span>
-            <span className="context-menu-label">View Details</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('openInBrowser')}>
-            <span className="codicon codicon-link-external"></span>
-            <span className="context-menu-label">Open in Browser</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleContextAction('viewDiff')}>
-            <span className="codicon codicon-diff"></span>
-            <span className="context-menu-label">View Diff</span>
-          </div>
-        </div>
-      )}
-
-      {branchContextMenu && branchContextMenu.visible && (
-        <div 
-          className="context-menu"
-          style={{ top: `${branchContextMenu.y}px`, left: `${branchContextMenu.x}px` }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('checkout')}>
-            <span className="codicon codicon-check"></span>
-            <span className="context-menu-label">Checkout Branch</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('newBranch')}>
-            <span className="codicon codicon-git-branch"></span>
-            <span className="context-menu-label">New Branch from...</span>
-          </div>
-          
-          <div className="context-menu-separator"></div>
-          
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('merge')}>
-            <span className="codicon codicon-git-merge"></span>
-            <span className="context-menu-label">Merge into Current Branch...</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('rebase')}>
-            <span className="codicon codicon-sync"></span>
-            <span className="context-menu-label">Rebase Current Branch onto This</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('pull')}>
-            <span className="codicon codicon-cloud-download"></span>
-            <span className="context-menu-label">Pull into Current Branch</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('push')}>
-            <span className="codicon codicon-cloud-upload"></span>
-            <span className="context-menu-label">Push Branch</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('pushTo')}>
-            <span className="codicon codicon-cloud-upload"></span>
-            <span className="context-menu-label">Push to Remote...</span>
-          </div>
-          
-          <div className="context-menu-separator"></div>
-          
-          {!branchContextMenu.isRemote && (
-            <div className="context-menu-item" onClick={() => handleBranchContextAction('rename')}>
-              <span className="codicon codicon-edit"></span>
-              <span className="context-menu-label">Rename Branch...</span>
-            </div>
-          )}
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('delete')}>
-            <span className="codicon codicon-trash"></span>
-            <span className="context-menu-label">Delete Branch...</span>
-          </div>
-          
-          <div className="context-menu-separator"></div>
-          
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('compare')}>
-            <span className="codicon codicon-git-compare"></span>
-            <span className="context-menu-label">Compare with Current Branch</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('compareWith')}>
-            <span className="codicon codicon-git-compare"></span>
-            <span className="context-menu-label">Compare with Branch...</span>
-          </div>
-          
-          <div className="context-menu-separator"></div>
-          
-          {pinnedBranches.has(branchContextMenu.branch) ? (
-            <div className="context-menu-item" onClick={() => handleBranchContextAction('unpin')}>
-              <span className="codicon codicon-pin" style={{ transform: 'rotate(45deg)' }}></span>
-              <span className="context-menu-label">Unpin Branch</span>
-            </div>
-          ) : (
-            <div className="context-menu-item" onClick={() => handleBranchContextAction('pin')}>
-              <span className="codicon codicon-pin"></span>
-              <span className="context-menu-label">Pin Branch</span>
-            </div>
-          )}
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('openInBrowser')}>
-            <span className="codicon codicon-link-external"></span>
-            <span className="context-menu-label">Open in Browser</span>
-          </div>
-          {!branchContextMenu.isRemote && (
-            <div className="context-menu-item" onClick={() => handleBranchContextAction('setUpstream')}>
-              <span className="codicon codicon-link"></span>
-              <span className="context-menu-label">Set as Upstream Branch</span>
-            </div>
-          )}
-          <div className="context-menu-item" onClick={() => handleBranchContextAction('showInGraph')}>
-            <span className="codicon codicon-graph"></span>
-            <span className="context-menu-label">Show in Commit Graph</span>
-          </div>
-        </div>
-      )}
-
-      {tagContextMenu && tagContextMenu.visible && (
-        <div 
-          className="context-menu"
-          style={{ top: `${tagContextMenu.y}px`, left: `${tagContextMenu.x}px` }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="context-menu-item" onClick={() => handleTagContextAction('viewDetails')}>
-            <span className="codicon codicon-inspect"></span>
-            <span className="context-menu-label">View Tag Details</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleTagContextAction('createBranch')}>
-            <span className="codicon codicon-git-branch"></span>
-            <span className="context-menu-label">Create Branch from Tag...</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleTagContextAction('compare')}>
-            <span className="codicon codicon-git-compare"></span>
-            <span className="context-menu-label">Compare with Current Branch</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleTagContextAction('delete')}>
-            <span className="codicon codicon-trash"></span>
-            <span className="context-menu-label">Delete Tag...</span>
-          </div>
-          
-          <div className="context-menu-separator"></div>
-          
-          <div className="context-menu-item" onClick={() => handleTagContextAction('copyName')}>
-            <span className="codicon codicon-copy"></span>
-            <span className="context-menu-label">Copy Tag Name</span>
-          </div>
-          <div className="context-menu-item" onClick={() => handleTagContextAction('openInBrowser')}>
-            <span className="codicon codicon-link-external"></span>
-            <span className="context-menu-label">Open in Browser</span>
-          </div>
-        </div>
+      {menuState && (
+        <ContextMenu
+          x={menuState.x}
+          y={menuState.y}
+          items={menuState.kind === 'commit' ? getCommitMenuItems() : menuState.kind === 'branch' ? getBranchMenuItems() : getTagMenuItems()}
+          onAction={handleMenuAction}
+          onClose={() => setMenuState(null)}
+        />
       )}
     </div>
   );

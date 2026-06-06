@@ -482,3 +482,34 @@ button:disabled {
   align-items: center;
   justify-content: center;
 }
+
+/* Extended Context Menu Styles */
+.context-menu-item.danger {
+  color: var(--vscode-errorForeground);
+}
+.context-menu-item.danger:hover {
+  background-color: var(--vscode-list-errorForeground, var(--vscode-errorForeground));
+  color: var(--vscode-editor-background, #ffffff);
+}
+
+.context-menu-item.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.context-menu-item .submenu-arrow {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.context-menu-submenu {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  margin-left: -2px; /* slight overlap */
+}
+
+.context-menu-item.focused {
+  background-color: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
+  color: var(--vscode-menu-selectionForeground, var(--vscode-foreground));
+}

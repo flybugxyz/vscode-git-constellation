@@ -45,6 +45,7 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 
 ### 5. Context Menus & Git Operations
 - **Trigger**: Right-clicking a commit row, branch (dropdown list / pills), or tag pill triggers custom context menus positioned to respect viewport boundaries.
+- **Implementation**: Handled by a unified `<ContextMenu />` component in `ContextMenu.tsx`. It provides standard styling, keyboard navigation, submenus (e.g. for Copying), danger states, and dynamic enabling/disabling of options.
 - **Commit Menu**: Copy SHA/short SHA/message/URL, create branch/tag/worktree, cherry-pick, revert, rebase, merge, compare, inspect details, open browser, view diff.
 - **Branch Menu**: Checkout, new branch, merge, rebase, pull, push, push to remote, rename, delete (local/remote), compare, pin/unpin, open in browser, set upstream. Pinned branches are displayed at the very top of the branch filter popup.
 - **Tag Menu**: View tag details (registers custom content provider `git-jb-tag` scheme), create branch, compare, delete (local/remote), copy tag name, open in browser.
@@ -65,4 +66,5 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - `webview/src/App.tsx`: Main UI orchestration.
 - `webview/src/GitGraph.tsx`: Commit graph rendering.
 - `webview/src/FileTree.tsx`: Modified files tree view.
+- `webview/src/ContextMenu.tsx`: Unified context menu component with keyboard navigation.
 - `webview/src/styles.css`: Global styles and theme overrides.
