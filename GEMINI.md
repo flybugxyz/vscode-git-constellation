@@ -57,6 +57,11 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - **Resizable Columns**: Enables manual stretching of the "Description", "Author", and "Date" columns via mouse drag handlers on header borders. Final column widths are saved and persisted via `localStorage`.
 - **Graph Column**: Exempt from manual resizing; width is automatically controlled by `GitGraph`.
 
+### 7. AI Commit Generation
+- **Integration**: OpenAI-compatible API configured via `git-jb.openai.apiUrl`, `git-jb.openai.apiKey`, `git-jb.openai.model`, and `git-jb.openai.prompt`.
+- **Logic**: Reads diff from selected checked files, limits length, and sends to the configured API. If no API key is set, it prompts the user to open settings.
+- **Test Command**: `git-jb.testOpenAISettings` is available via settings page or command palette to verify connection.
+
 ## Maintenance Guidelines
 - **Building**: Always run `npm run compile` to build both Webview (Vite) and Extension (Webpack).
 - **Styling**: Prefer `var(--vscode-*)` variables for theme compatibility.

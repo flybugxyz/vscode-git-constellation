@@ -17,6 +17,37 @@
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "git-jb.testOpenAISettings",
+        "title": "Test OpenAI Settings"
+      }
+    ],
+    "configuration": {
+      "title": "Git JB Style",
+      "properties": {
+        "git-jb.openai.apiUrl": {
+          "type": "string",
+          "default": "https://api.openai.com/v1/chat/completions",
+          "description": "OpenAI API URL. [Test Configuration](command:git-jb.testOpenAISettings)"
+        },
+        "git-jb.openai.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API Key."
+        },
+        "git-jb.openai.model": {
+          "type": "string",
+          "default": "gpt-3.5-turbo",
+          "description": "OpenAI Model."
+        },
+        "git-jb.openai.prompt": {
+          "type": "string",
+          "default": "Generate a concise, conventional commit message based on the following git diff. Output ONLY the commit message without any markdown code blocks or quotes.",
+          "description": "System prompt for generating commit messages."
+        }
+      }
+    },
     "viewsContainers": {
       "panel": [
         {

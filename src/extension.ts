@@ -1,6 +1,55 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as https from 'https';
+import * as http from 'http';
 import { GitService } from './git';
+
+function requestAIApi(apiUrl: string, apiKey: string, body: any): Promise<any> {
+  return new Promise((resolve, reject) => {
+    let url: URL;
+    try {
+      url = new URL(apiUrl);
+    } catch (e) {
+      return reject(new Error('Invalid API URL'));
+    }
+
+    const options = {
+      hostname: url.hostname,
+      port: url.port,
+      path: url.pathname + url.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      }
+    };
+
+    const client = url.protocol === 'https:' ? https : http;
+    const req = client.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 400) {
+          try {
+            const errBody = JSON.parse(data);
+            return reject(new Error(errBody.error?.message || `HTTP ${res.statusCode}: ${data}`));
+          } catch {
+            return reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+          }
+        }
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(new Error('Invalid JSON response from API'));
+        }
+      });
+    });
+
+    req.on('error', (e) => reject(e));
+    req.write(JSON.stringify(body));
+    req.end();
+  });
+}
 
 export function activate(context: vscode.ExtensionContext) {
   const gitService = new GitService();
@@ -8,6 +57,41 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(GitJBViewProvider.viewType, provider)
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('git-jb.testOpenAISettings', async () => {
+      const config = vscode.workspace.getConfiguration('git-jb.openai');
+      const apiUrl = config.get<string>('apiUrl');
+      const apiKey = config.get<string>('apiKey');
+      const model = config.get<string>('model');
+
+      if (!apiKey || !apiUrl) {
+        vscode.window.showErrorMessage('OpenAI API URL and API Key must be configured.');
+        return;
+      }
+
+      vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: 'Testing OpenAI Configuration...',
+        cancellable: false
+      }, async () => {
+        try {
+          const result = await requestAIApi(apiUrl, apiKey, {
+            model: model,
+            messages: [{ role: 'user', content: 'Say "hello"' }],
+            max_tokens: 10
+          });
+          if (result && result.choices && result.choices[0]) {
+            vscode.window.showInformationMessage('OpenAI configuration test successful!');
+          } else {
+            throw new Error('Unexpected response structure');
+          }
+        } catch (err: any) {
+          vscode.window.showErrorMessage(`OpenAI configuration test failed: ${err.message}`);
+        }
+      });
+    })
   );
 
   // Register custom content provider for showing historical files
@@ -99,6 +183,54 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           }
           this.refresh();
           break;
+        case 'generateCommitMessage': {
+          const config = vscode.workspace.getConfiguration('git-jb.openai');
+          const apiUrl = config.get<string>('apiUrl');
+          const apiKey = config.get<string>('apiKey');
+          const model = config.get<string>('model');
+          const prompt = config.get<string>('prompt');
+
+          if (!apiKey || !apiUrl) {
+            const action = await vscode.window.showWarningMessage('OpenAI API Key and URL must be configured to generate commit messages.', 'Open Settings');
+            if (action === 'Open Settings') {
+              vscode.commands.executeCommand('workbench.action.openSettings', 'git-jb.openai');
+            }
+            this._view?.webview.postMessage({ type: 'generateCommitMessageResult', error: 'Not configured' });
+            break;
+          }
+
+          try {
+            await vscode.window.withProgress({
+              location: vscode.ProgressLocation.Notification,
+              title: "Generating commit message...",
+              cancellable: false
+            }, async () => {
+              const diff = await this._gitService.getDiffForFiles(data.files);
+              if (!diff.trim()) {
+                throw new Error("No diff available for the selected files.");
+              }
+              
+              const result = await requestAIApi(apiUrl, apiKey, {
+                model: model,
+                messages: [
+                  { role: 'system', content: prompt },
+                  { role: 'user', content: `Here is the git diff:\n\n${diff}` }
+                ]
+              });
+              
+              if (result && result.choices && result.choices[0]) {
+                const message = result.choices[0].message.content.trim();
+                this._view?.webview.postMessage({ type: 'generateCommitMessageResult', message });
+              } else {
+                throw new Error("Unexpected response structure");
+              }
+            });
+          } catch (err: any) {
+            vscode.window.showErrorMessage(`Failed to generate commit message: ${err.message}`);
+            this._view?.webview.postMessage({ type: 'generateCommitMessageResult', error: err.message });
+          }
+          break;
+        }
         case 'getDiff':
           const files = await this._gitService.getCommitFiles(data.hash);
           this._view?.webview.postMessage({ type: 'files', hash: data.hash, files });

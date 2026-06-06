@@ -22,6 +22,7 @@ function App() {
   const [pinnedBranches, setPinnedBranches] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'log' | 'local'>('log');
   const [commitMessage, setCommitMessage] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
   const [showBranches, setShowBranches] = useState(false);
   const [selectedCommitFiles, setSelectedCommitFiles] = useState<{hash: string, files: {status: string, path: string}[]} | null>(null);
   const [filterBranch, setFilterBranch] = useState<string>('ALL');
@@ -83,6 +84,12 @@ function App() {
         case 'compareFiles':
           setSelectedCommitFiles({ hash: message.hash, files: message.files });
           setIsCompareMode(true);
+          break;
+        case 'generateCommitMessageResult':
+          setIsGenerating(false);
+          if (message.message) {
+            setCommitMessage(message.message);
+          }
           break;
       }
     };
@@ -162,6 +169,12 @@ function App() {
       force: forcePush
     });
     setCommitMessage('');
+  };
+
+  const handleGenerateAI = () => {
+    if (checkedFiles.size === 0) return;
+    setIsGenerating(true);
+    vscode.postMessage({ type: 'generateCommitMessage', files: Array.from(checkedFiles) });
   };
 
   const handleCheckChange = (path: string, checked: boolean, filePaths: string[]) => {
@@ -840,7 +853,19 @@ function App() {
                 <p style={{ padding: '10px', fontSize: '11px', opacity: 0.6 }}>No local changes.</p>
               )}
             </div>
-            <div className="commit-box">
+            <div className="commit-box" style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Commit Message</span>
+                <button
+                  className="icon-button"
+                  title="Generate Commit Message (AI)"
+                  onClick={handleGenerateAI}
+                  disabled={isGenerating || checkedFiles.size === 0}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--vscode-icon-foreground)' }}
+                >
+                  <span className={`codicon ${isGenerating ? 'codicon-loading codicon-modifier-spin' : 'codicon-sparkle'}`}></span>
+                </button>
+              </div>
               <textarea 
                 placeholder="Commit message" 
                 value={commitMessage}

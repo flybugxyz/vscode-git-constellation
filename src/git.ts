@@ -138,6 +138,26 @@ export class GitService {
     }
   }
 
+  public async getDiffForFiles(files: string[]): Promise<string> {
+    if (!this._git || files.length === 0) return '';
+    try {
+      // Temporarily stage files to get their diff
+      await this._git.add(files);
+      const diff = await this._git.diff(['--staged']);
+      // Unstage them so we don't unexpectedly modify the index if user cancels
+      await this._git.reset(['HEAD', ...files]);
+      
+      // Limit diff size to avoid huge API requests
+      if (diff.length > 15000) {
+        return diff.substring(0, 15000) + '\n... [Diff truncated due to length]';
+      }
+      return diff;
+    } catch (err) {
+      console.error('Error getting diff for files:', err);
+      return '';
+    }
+  }
+
   public async getCommitFiles(hash: string) {
     if (!this._git) return [];
     try {
