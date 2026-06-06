@@ -43,12 +43,13 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - Split into **Changed Files** (top) and **Commit Details** (bottom).
 - Both sections are collapsible with persistent state in the session.
 
-### 5. Commit Context Menu & Git Operations
-- **Trigger**: Right-clicking a commit row triggers `handleContextMenu`, rendering a custom HTML context menu positioned to respect viewport boundaries.
-- **Copy Actions**: Copies full/short SHA, commit message, or parsed remote repository HTTP URL.
-- **Git Actions**: Create branch, create tag, create worktree, cherry-pick, cherry-pick in worktree, revert, rebase, and merge.
-- **Compare Mode**: Fetches and renders file differences (`git diff --name-status HEAD <hash>`) between the selected commit and current branch. Supports exiting comparison mode via a banner in the changed files pane.
-- **View Diff**: Registers a custom text content provider `git-jb-diff` scheme returning full git diffs with VS Code syntax highlighting.
+### 5. Context Menus & Git Operations
+- **Trigger**: Right-clicking a commit row, branch (dropdown list / pills), or tag pill triggers custom context menus positioned to respect viewport boundaries.
+- **Commit Menu**: Copy SHA/short SHA/message/URL, create branch/tag/worktree, cherry-pick, revert, rebase, merge, compare, inspect details, open browser, view diff.
+- **Branch Menu**: Checkout, new branch, merge, rebase, pull, push, push to remote, rename, delete (local/remote), compare, pin/unpin, open in browser, set upstream. Pinned branches are displayed at the very top of the branch filter popup.
+- **Tag Menu**: View tag details (registers custom content provider `git-jb-tag` scheme), create branch, compare, delete (local/remote), copy tag name, open in browser.
+- **Compare Mode**: Diff status between branches/tags or HEAD vs commit. Renders file differences list in the side pane with a banner to exit.
+- **View Diff**: Registers a custom text content provider `git-jb-diff` scheme returning full git diffs.
 
 ## Maintenance Guidelines
 - **Building**: Always run `npm run compile` to build both Webview (Vite) and Extension (Webpack).

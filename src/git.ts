@@ -291,4 +291,171 @@ export class GitService {
       return [];
     }
   }
+
+  public async getBranchUrl(branchName: string): Promise<string> {
+    if (!this._git) return '';
+    try {
+      const remoteUrl = await this._git.remote(['get-url', 'origin']);
+      if (remoteUrl) {
+        const trimmed = remoteUrl.trim();
+        let httpUrl = trimmed;
+        if (trimmed.startsWith('git@')) {
+          httpUrl = trimmed
+            .replace(':', '/')
+            .replace('git@', 'https://');
+        }
+        if (httpUrl.endsWith('.git')) {
+          httpUrl = httpUrl.slice(0, -4);
+        }
+        const cleanBranch = branchName.replace(/^remotes\/[^\/]+\//, '').replace(/^origin\//, '');
+        if (httpUrl.includes('gitlab.com')) {
+          return `${httpUrl}/-/tree/${cleanBranch}`;
+        }
+        return `${httpUrl}/tree/${cleanBranch}`;
+      }
+    } catch (err) {
+      console.error('Error getting branch URL:', err);
+    }
+    return '';
+  }
+
+  public async getTagUrl(tagName: string): Promise<string> {
+    if (!this._git) return '';
+    try {
+      const remoteUrl = await this._git.remote(['get-url', 'origin']);
+      if (remoteUrl) {
+        const trimmed = remoteUrl.trim();
+        let httpUrl = trimmed;
+        if (trimmed.startsWith('git@')) {
+          httpUrl = trimmed
+            .replace(':', '/')
+            .replace('git@', 'https://');
+        }
+        if (httpUrl.endsWith('.git')) {
+          httpUrl = httpUrl.slice(0, -4);
+        }
+        if (httpUrl.includes('gitlab.com')) {
+          return `${httpUrl}/-/tags/${tagName}`;
+        }
+        return `${httpUrl}/releases/tag/${tagName}`;
+      }
+    } catch (err) {
+      console.error('Error getting tag URL:', err);
+    }
+    return '';
+  }
+
+  public async createBranchFrom(newName: string, startPoint: string) {
+    if (!this._git) return;
+    try {
+      await this._git.checkout(['-b', newName, startPoint]);
+      vscode.window.showInformationMessage(`Branch '${newName}' created from '${startPoint}'.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Failed to create branch: ${err}`);
+    }
+  }
+
+  public async pullBranch(branchName: string) {
+    if (!this._git) return;
+    try {
+      const cleanBranch = branchName.replace(/^remotes\/[^\/]+\//, '');
+      await this._git.pull('origin', cleanBranch);
+      vscode.window.showInformationMessage(`Pulled branch '${cleanBranch}'.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Pull failed: ${err}`);
+    }
+  }
+
+  public async pushBranch(branchName: string, remote: string = 'origin') {
+    if (!this._git) return;
+    try {
+      const cleanBranch = branchName.replace(/^remotes\/[^\/]+\//, '');
+      await this._git.push(remote, cleanBranch);
+      vscode.window.showInformationMessage(`Pushed branch '${cleanBranch}' to remote '${remote}'.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Push failed: ${err}`);
+    }
+  }
+
+  public async renameBranch(oldName: string, newName: string) {
+    if (!this._git) return;
+    try {
+      await this._git.branch(['-m', oldName, newName]);
+      vscode.window.showInformationMessage(`Renamed branch from '${oldName}' to '${newName}'.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Rename failed: ${err}`);
+    }
+  }
+
+  public async deleteBranch(branchName: string, isRemote: boolean) {
+    if (!this._git) return;
+    try {
+      if (isRemote) {
+        const parts = branchName.replace(/^remotes\//, '').split('/');
+        const remoteName = parts[0];
+        const remoteBranch = parts.slice(1).join('/');
+        await this._git.push(remoteName, remoteBranch, ['--delete']);
+        vscode.window.showInformationMessage(`Deleted remote branch '${remoteBranch}' from remote '${remoteName}'.`);
+      } else {
+        await this._git.branch(['-D', branchName]);
+        vscode.window.showInformationMessage(`Deleted local branch '${branchName}'.`);
+      }
+    } catch (err) {
+      vscode.window.showErrorMessage(`Delete failed: ${err}`);
+    }
+  }
+
+  public async compareBranches(branchA: string, branchB: string) {
+    if (!this._git) return [];
+    try {
+      const result = await this._git.raw(['diff', '--name-status', branchA, branchB]);
+      return result.trim().split('\n').filter(Boolean).map(line => {
+        const [status, path] = line.split(/\s+/);
+        return { status, path };
+      });
+    } catch (err) {
+      console.error('Error comparing branches:', err);
+      return [];
+    }
+  }
+
+  public async setUpstream(branchName: string, upstreamName: string) {
+    if (!this._git) return;
+    try {
+      await this._git.branch([`--set-upstream-to=${upstreamName}`, branchName]);
+      vscode.window.showInformationMessage(`Set upstream of '${branchName}' to '${upstreamName}'.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Failed to set upstream: ${err}`);
+    }
+  }
+
+  public async getTagDetails(tagName: string): Promise<string> {
+    if (!this._git) return '';
+    try {
+      return await this._git.show([tagName]);
+    } catch (err) {
+      console.error('Error showing tag details:', err);
+      return '';
+    }
+  }
+
+  public async deleteTag(tagName: string) {
+    if (!this._git) return;
+    try {
+      await this._git.tag(['-d', tagName]);
+      vscode.window.showInformationMessage(`Deleted local tag '${tagName}'.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Failed to delete tag: ${err}`);
+    }
+  }
+
+  public async deleteRemoteTag(tagName: string) {
+    if (!this._git) return;
+    try {
+      await this._git.push('origin', tagName, ['--delete']);
+      vscode.window.showInformationMessage(`Deleted remote tag '${tagName}'.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Failed to delete remote tag: ${err}`);
+    }
+  }
 }
