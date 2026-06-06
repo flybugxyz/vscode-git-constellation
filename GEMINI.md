@@ -46,7 +46,7 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 ### 5. Commit Context Menu & Git Operations
 - **Trigger**: Right-clicking a commit row triggers `handleContextMenu`, rendering a custom HTML context menu positioned to respect viewport boundaries.
 - **Copy Actions**: Copies full/short SHA, commit message, or parsed remote repository HTTP URL.
-- **Git Actions**: Create branch, create tag, create worktree (Pro), cherry-pick, cherry-pick in worktree (Pro), revert, rebase, and merge.
+- **Git Actions**: Create branch, create tag, create worktree, cherry-pick, cherry-pick in worktree, revert, rebase, and merge.
 - **Compare Mode**: Fetches and renders file differences (`git diff --name-status HEAD <hash>`) between the selected commit and current branch. Supports exiting comparison mode via a banner in the changed files pane.
 - **View Diff**: Registers a custom text content provider `git-jb-diff` scheme returning full git diffs with VS Code syntax highlighting.
 

@@ -563,7 +563,6 @@ function App() {
           <div className="context-menu-item" onClick={() => handleContextAction('createWorktree')}>
             <span className="codicon codicon-worktree"></span>
             <span className="context-menu-label">Create Worktree...</span>
-            <span className="pro-badge">Pro</span>
           </div>
           
           <div className="context-menu-separator"></div>
@@ -575,7 +574,6 @@ function App() {
           <div className="context-menu-item" onClick={() => handleContextAction('cherryPickWithWorktree')}>
             <span className="codicon codicon-git-merge"></span>
             <span className="context-menu-label">Cherry Pick (with worktree)</span>
-            <span className="pro-badge">Pro</span>
           </div>
           <div className="context-menu-item" onClick={() => handleContextAction('revertCommit')}>
             <span className="codicon codicon-discard"></span>
