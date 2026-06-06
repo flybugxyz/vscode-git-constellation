@@ -169,4 +169,126 @@ export class GitService {
       vscode.window.showErrorMessage(`Checkout failed: ${err}`);
     }
   }
+
+  public async getCommitUrl(hash: string): Promise<string> {
+    if (!this._git) return '';
+    try {
+      const remoteUrl = await this._git.remote(['get-url', 'origin']);
+      if (remoteUrl) {
+        const trimmed = remoteUrl.trim();
+        let httpUrl = trimmed;
+        if (trimmed.startsWith('git@')) {
+          httpUrl = trimmed
+            .replace(':', '/')
+            .replace('git@', 'https://');
+        }
+        if (httpUrl.endsWith('.git')) {
+          httpUrl = httpUrl.slice(0, -4);
+        }
+        if (httpUrl.includes('gitlab.com')) {
+          return `${httpUrl}/-/commit/${hash}`;
+        }
+        return `${httpUrl}/commit/${hash}`;
+      }
+    } catch (err) {
+      console.error('Error getting remote URL:', err);
+    }
+    return '';
+  }
+
+  public async createBranch(name: string, hash: string) {
+    if (!this._git) return;
+    try {
+      await this._git.checkout(['-b', name, hash]);
+      vscode.window.showInformationMessage(`Branch '${name}' created at commit ${hash.substring(0, 7)}.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Failed to create branch: ${err}`);
+    }
+  }
+
+  public async createTag(name: string, hash: string) {
+    if (!this._git) return;
+    try {
+      await this._git.tag([name, hash]);
+      vscode.window.showInformationMessage(`Tag '${name}' created at commit ${hash.substring(0, 7)}.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Failed to create tag: ${err}`);
+    }
+  }
+
+  public async createWorktree(path: string, hash: string) {
+    if (!this._git) return;
+    try {
+      await this._git.raw(['worktree', 'add', path, hash]);
+      vscode.window.showInformationMessage(`Worktree created at ${path} for commit ${hash.substring(0, 7)}.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Failed to create worktree: ${err}`);
+    }
+  }
+
+  public async cherryPick(hash: string) {
+    if (!this._git) return;
+    try {
+      await this._git.raw(['cherry-pick', hash]);
+      vscode.window.showInformationMessage(`Cherry-picked commit ${hash.substring(0, 7)}.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Cherry-pick failed: ${err}`);
+    }
+  }
+
+  public async cherryPickWithWorktree(path: string, branchName: string, hash: string) {
+    if (!this._git) return;
+    try {
+      await this._git.raw(['worktree', 'add', '-b', branchName, path, 'HEAD']);
+      const wtGit = simpleGit(path);
+      await wtGit.raw(['cherry-pick', hash]);
+      vscode.window.showInformationMessage(`Worktree created at ${path} on branch ${branchName} and cherry-picked commit ${hash.substring(0, 7)}.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Cherry-pick in worktree failed: ${err}`);
+    }
+  }
+
+  public async revertCommit(hash: string) {
+    if (!this._git) return;
+    try {
+      await this._git.revert(hash, ['--no-edit']);
+      vscode.window.showInformationMessage(`Reverted commit ${hash.substring(0, 7)}.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Revert failed: ${err}`);
+    }
+  }
+
+  public async rebase(hash: string) {
+    if (!this._git) return;
+    try {
+      await this._git.rebase([hash]);
+      vscode.window.showInformationMessage(`Successfully rebased current branch onto ${hash.substring(0, 7)}.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Rebase failed: ${err}`);
+    }
+  }
+
+  public async merge(hash: string) {
+    if (!this._git) return;
+    try {
+      await this._git.merge([hash]);
+      vscode.window.showInformationMessage(`Successfully merged commit ${hash.substring(0, 7)}.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Merge failed: ${err}`);
+    }
+  }
+
+  public async getCompareFiles(hash: string) {
+    if (!this._git) return [];
+    try {
+      const result = await this._git.raw(['diff', '--name-status', 'HEAD', hash]);
+      return result.trim().split('\n').filter(Boolean).map(line => {
+        const [status, path] = line.split(/\s+/);
+        return { status, path };
+      });
+    } catch (err) {
+      console.error('Error fetching compare files:', err);
+      return [];
+    }
+  }
 }

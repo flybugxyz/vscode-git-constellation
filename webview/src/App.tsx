@@ -9,6 +9,8 @@ const vscode = acquireVsCodeApi();
 function App() {
   const [gitData, setGitData] = useState<any>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, commit: any, index: number } | null>(null);
+  const [isCompareMode, setIsCompareMode] = useState(false);
   const [activeTab, setActiveTab] = useState<'log' | 'local'>('log');
   const [commitMessage, setCommitMessage] = useState('');
   const [showBranches, setShowBranches] = useState(false);
@@ -55,11 +57,23 @@ function App() {
         case 'files':
           setSelectedCommitFiles({ hash: message.hash, files: message.files });
           break;
+        case 'compareFiles':
+          setSelectedCommitFiles({ hash: message.hash, files: message.files });
+          setIsCompareMode(true);
+          break;
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  useEffect(() => {
+    const handleWindowClick = () => {
+      setContextMenu(null);
+    };
+    window.addEventListener('click', handleWindowClick);
+    return () => window.removeEventListener('click', handleWindowClick);
   }, []);
 
   const formatDate = (dateStr: string) => {
@@ -118,6 +132,7 @@ function App() {
 
   const handleSelectCommit = (idx: number, hash: string) => {
     setSelectedIndex(idx);
+    setIsCompareMode(false);
     vscode.postMessage({ type: 'getDiff', hash });
   };
 
@@ -131,7 +146,103 @@ function App() {
 
   const handleFileClick = (path: string) => {
     if (selectedCommitFiles) {
-      vscode.postMessage({ type: 'openDiff', hash: selectedCommitFiles.hash, path });
+      vscode.postMessage({ 
+        type: 'openDiff', 
+        hash: selectedCommitFiles.hash, 
+        path,
+        isCompare: isCompareMode
+      });
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, commit: any, idx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowBranches(false);
+
+    const menuWidth = 220;
+    const menuHeight = 450;
+    
+    let x = e.clientX;
+    let y = e.clientY;
+
+    if (x + menuWidth > window.innerWidth) {
+      x = window.innerWidth - menuWidth - 10;
+    }
+    if (y + menuHeight > window.innerHeight) {
+      y = window.innerHeight - menuHeight - 10;
+    }
+    if (x < 0) x = 10;
+    if (y < 0) y = 10;
+
+    setContextMenu({
+      visible: true,
+      x,
+      y,
+      commit,
+      index: idx
+    });
+  };
+
+  const handleContextAction = (action: string) => {
+    if (!contextMenu || !contextMenu.commit) return;
+    const { commit, index } = contextMenu;
+    setContextMenu(null);
+
+    switch (action) {
+      case 'copySHA':
+        vscode.postMessage({ type: 'copySHA', hash: commit.hash });
+        break;
+      case 'copyShortSHA':
+        vscode.postMessage({ type: 'copyShortSHA', hash: commit.hash });
+        break;
+      case 'copyMessage':
+        vscode.postMessage({ type: 'copyMessage', message: commit.message });
+        break;
+      case 'copyURL':
+        vscode.postMessage({ type: 'copyURL', hash: commit.hash });
+        break;
+      case 'createBranch':
+        vscode.postMessage({ type: 'createBranch', hash: commit.hash });
+        break;
+      case 'createTag':
+        vscode.postMessage({ type: 'createTag', hash: commit.hash });
+        break;
+      case 'createWorktree':
+        vscode.postMessage({ type: 'createWorktree', hash: commit.hash });
+        break;
+      case 'cherryPick':
+        vscode.postMessage({ type: 'cherryPick', hash: commit.hash });
+        break;
+      case 'cherryPickWithWorktree':
+        vscode.postMessage({ type: 'cherryPickWithWorktree', hash: commit.hash });
+        break;
+      case 'revertCommit':
+        vscode.postMessage({ type: 'revertCommit', hash: commit.hash });
+        break;
+      case 'rebase':
+        vscode.postMessage({ type: 'rebase', hash: commit.hash });
+        break;
+      case 'merge':
+        vscode.postMessage({ type: 'merge', hash: commit.hash });
+        break;
+      case 'compare':
+        setSelectedIndex(index);
+        vscode.postMessage({ type: 'compare', hash: commit.hash });
+        break;
+      case 'viewDetails':
+        setSelectedIndex(index);
+        setActiveTab('log');
+        setFilesExpanded(true);
+        setDetailsExpanded(true);
+        vscode.postMessage({ type: 'getDiff', hash: commit.hash });
+        break;
+      case 'openInBrowser':
+        vscode.postMessage({ type: 'openInBrowser', hash: commit.hash });
+        break;
+      case 'viewDiff':
+        vscode.postMessage({ type: 'viewDiff', hash: commit.hash });
+        break;
     }
   };
 
@@ -273,6 +384,7 @@ function App() {
                         key={commit.hash} 
                         className={selectedIndex === idx ? 'selected' : ''}
                         onClick={() => handleSelectCommit(idx, commit.hash)}
+                        onContextMenu={(e) => handleContextMenu(e, commit, idx)}
                       >
                         <td style={{ width: `${graphWidth}px` }}></td>
                         <td title={commit.message}>
@@ -300,6 +412,20 @@ function App() {
                 </div>
                 {filesExpanded && (
                   <div className="file-tree-wrapper">
+                    {isCompareMode && (
+                      <div className="compare-banner">
+                        <span>Comparing with HEAD</span>
+                        <div className="compare-banner-close" onClick={(e) => {
+                          e.stopPropagation();
+                          setIsCompareMode(false);
+                          if (selectedCommit) {
+                            vscode.postMessage({ type: 'getDiff', hash: selectedCommit.hash });
+                          }
+                        }}>
+                          <span className="codicon codicon-close" style={{ fontSize: '10px' }}></span>
+                        </div>
+                      </div>
+                    )}
                     {selectedCommitFiles ? (
                       <FileTree files={selectedCommitFiles.files} onFileClick={handleFileClick} />
                     ) : (
@@ -401,6 +527,89 @@ function App() {
           </div>
         )}
       </div>
+      {contextMenu && contextMenu.visible && (
+        <div 
+          className="context-menu"
+          style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="context-menu-item" onClick={() => handleContextAction('copySHA')}>
+            <span className="codicon codicon-copy"></span>
+            <span className="context-menu-label">Copy SHA</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('copyShortSHA')}>
+            <span className="codicon codicon-copy"></span>
+            <span className="context-menu-label">Copy Short SHA</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('copyMessage')}>
+            <span className="codicon codicon-copy"></span>
+            <span className="context-menu-label">Copy Message</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('copyURL')}>
+            <span className="codicon codicon-link"></span>
+            <span className="context-menu-label">Copy URL</span>
+          </div>
+          
+          <div className="context-menu-separator"></div>
+          
+          <div className="context-menu-item" onClick={() => handleContextAction('createBranch')}>
+            <span className="codicon codicon-git-branch"></span>
+            <span className="context-menu-label">Create Branch...</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('createTag')}>
+            <span className="codicon codicon-tag"></span>
+            <span className="context-menu-label">Create Tag...</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('createWorktree')}>
+            <span className="codicon codicon-worktree"></span>
+            <span className="context-menu-label">Create Worktree...</span>
+            <span className="pro-badge">Pro</span>
+          </div>
+          
+          <div className="context-menu-separator"></div>
+          
+          <div className="context-menu-item" onClick={() => handleContextAction('cherryPick')}>
+            <span className="codicon codicon-git-merge"></span>
+            <span className="context-menu-label">Cherry Pick</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('cherryPickWithWorktree')}>
+            <span className="codicon codicon-git-merge"></span>
+            <span className="context-menu-label">Cherry Pick (with worktree)</span>
+            <span className="pro-badge">Pro</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('revertCommit')}>
+            <span className="codicon codicon-discard"></span>
+            <span className="context-menu-label">Revert Commit</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('rebase')}>
+            <span className="codicon codicon-sync"></span>
+            <span className="context-menu-label">Rebase Current Branch onto This</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('merge')}>
+            <span className="codicon codicon-merge"></span>
+            <span className="context-menu-label">Merge into Current Branch...</span>
+          </div>
+          
+          <div className="context-menu-separator"></div>
+          
+          <div className="context-menu-item" onClick={() => handleContextAction('compare')}>
+            <span className="codicon codicon-git-compare"></span>
+            <span className="context-menu-label">Compare with Current Branch</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('viewDetails')}>
+            <span className="codicon codicon-inspect"></span>
+            <span className="context-menu-label">View Details</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('openInBrowser')}>
+            <span className="codicon codicon-link-external"></span>
+            <span className="context-menu-label">Open in Browser</span>
+          </div>
+          <div className="context-menu-item" onClick={() => handleContextAction('viewDiff')}>
+            <span className="codicon codicon-diff"></span>
+            <span className="context-menu-label">View Diff</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

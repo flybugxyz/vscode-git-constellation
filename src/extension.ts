@@ -20,6 +20,15 @@ export function activate(context: vscode.ExtensionContext) {
   })();
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('git-jb-show', contentProvider));
 
+  // Register custom content provider for showing full commit diffs
+  const diffContentProvider = new (class implements vscode.TextDocumentContentProvider {
+    async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
+      const hash = uri.path.replace(/\.diff$/, '');
+      return await gitService.getDiff(hash);
+    }
+  })();
+  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('git-jb-diff', diffContentProvider));
+
   // Refresh on git changes
   const watcher = vscode.workspace.createFileSystemWatcher('**/.git/refs/heads/*');
   watcher.onDidChange(() => provider.refresh());
@@ -82,12 +91,18 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           this._view?.webview.postMessage({ type: 'files', hash: data.hash, files });
           break;
         case 'openDiff':
-          const { hash, path: filePath } = data;
+          const { hash, path: filePath, isCompare } = data;
           if (hash) {
-            const parentHash = await this._gitService.getParentHash(hash);
-            const leftUri = vscode.Uri.parse(`git-jb-show:${parentHash || ''}/${filePath}`);
-            const rightUri = vscode.Uri.parse(`git-jb-show:${hash}/${filePath}`);
-            vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (${hash.substring(0, 7)})`);
+            if (isCompare) {
+              const leftUri = vscode.Uri.parse(`git-jb-show:HEAD/${filePath}`);
+              const rightUri = vscode.Uri.parse(`git-jb-show:${hash}/${filePath}`);
+              vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (HEAD vs ${hash.substring(0, 7)})`);
+            } else {
+              const parentHash = await this._gitService.getParentHash(hash);
+              const leftUri = vscode.Uri.parse(`git-jb-show:${parentHash || ''}/${filePath}`);
+              const rightUri = vscode.Uri.parse(`git-jb-show:${hash}/${filePath}`);
+              vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (${hash.substring(0, 7)})`);
+            }
           } else {
             const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             if (workspaceRoot) {
@@ -105,6 +120,123 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           this._currentFilter = data.branch;
           this.refresh();
           break;
+        case 'copySHA':
+          await vscode.env.clipboard.writeText(data.hash);
+          vscode.window.showInformationMessage('SHA copied to clipboard');
+          break;
+        case 'copyShortSHA':
+          await vscode.env.clipboard.writeText(data.hash.substring(0, 7));
+          vscode.window.showInformationMessage('Short SHA copied to clipboard');
+          break;
+        case 'copyMessage':
+          await vscode.env.clipboard.writeText(data.message);
+          vscode.window.showInformationMessage('Commit message copied to clipboard');
+          break;
+        case 'copyURL': {
+          const url = await this._gitService.getCommitUrl(data.hash);
+          if (url) {
+            await vscode.env.clipboard.writeText(url);
+            vscode.window.showInformationMessage('Commit URL copied to clipboard');
+          } else {
+            vscode.window.showErrorMessage('Failed to resolve remote commit URL');
+          }
+          break;
+        }
+        case 'openInBrowser': {
+          const browserUrl = await this._gitService.getCommitUrl(data.hash);
+          if (browserUrl) {
+            vscode.env.openExternal(vscode.Uri.parse(browserUrl));
+          } else {
+            vscode.window.showErrorMessage('Failed to resolve remote commit URL');
+          }
+          break;
+        }
+        case 'createBranch': {
+          const branchName = await vscode.window.showInputBox({
+            prompt: `Create Branch from commit ${data.hash.substring(0, 7)}`,
+            placeHolder: 'Enter branch name'
+          });
+          if (branchName && branchName.trim()) {
+            await this._gitService.createBranch(branchName.trim(), data.hash);
+            this.refresh();
+          }
+          break;
+        }
+        case 'createTag': {
+          const tagName = await vscode.window.showInputBox({
+            prompt: `Create Tag at commit ${data.hash.substring(0, 7)}`,
+            placeHolder: 'Enter tag name'
+          });
+          if (tagName && tagName.trim()) {
+            await this._gitService.createTag(tagName.trim(), data.hash);
+            this.refresh();
+          }
+          break;
+        }
+        case 'createWorktree': {
+          const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+          const defaultPath = workspaceRoot ? path.join(path.dirname(workspaceRoot), `${path.basename(workspaceRoot)}-wt-${data.hash.substring(0, 7)}`) : '';
+          const wtPath = await vscode.window.showInputBox({
+            prompt: `Create Worktree for commit ${data.hash.substring(0, 7)}`,
+            placeHolder: 'Enter local folder path for worktree',
+            value: defaultPath
+          });
+          if (wtPath && wtPath.trim()) {
+            await this._gitService.createWorktree(wtPath.trim(), data.hash);
+            this.refresh();
+          }
+          break;
+        }
+        case 'cherryPick':
+          await this._gitService.cherryPick(data.hash);
+          this.refresh();
+          break;
+        case 'cherryPickWithWorktree': {
+          const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+          const defaultPath = workspaceRoot ? path.join(path.dirname(workspaceRoot), `${path.basename(workspaceRoot)}-wt-cp-${data.hash.substring(0, 7)}`) : '';
+          const wtPath = await vscode.window.showInputBox({
+            prompt: `Enter worktree folder path`,
+            placeHolder: 'Enter local path',
+            value: defaultPath
+          });
+          if (!wtPath || !wtPath.trim()) break;
+          const branchName = await vscode.window.showInputBox({
+            prompt: `Enter new branch name for the cherry-pick in worktree`,
+            placeHolder: 'Enter branch name',
+            value: `cherry-pick-${data.hash.substring(0, 7)}`
+          });
+          if (!branchName || !branchName.trim()) break;
+          await this._gitService.cherryPickWithWorktree(wtPath.trim(), branchName.trim(), data.hash);
+          this.refresh();
+          break;
+        }
+        case 'revertCommit':
+          await this._gitService.revertCommit(data.hash);
+          this.refresh();
+          break;
+        case 'rebase':
+          await this._gitService.rebase(data.hash);
+          this.refresh();
+          break;
+        case 'merge':
+          await this._gitService.merge(data.hash);
+          this.refresh();
+          break;
+        case 'compare': {
+          const compareFiles = await this._gitService.getCompareFiles(data.hash);
+          this._view?.webview.postMessage({
+            type: 'compareFiles',
+            hash: data.hash,
+            files: compareFiles
+          });
+          break;
+        }
+        case 'viewDiff': {
+          const uri = vscode.Uri.parse(`git-jb-diff:${data.hash}.diff`);
+          const doc = await vscode.workspace.openTextDocument(uri);
+          await vscode.window.showTextDocument(doc, { preview: false });
+          break;
+        }
       }
     });
   }

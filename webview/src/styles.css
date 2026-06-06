@@ -368,3 +368,86 @@ button:disabled {
 .branch-item.nested {
   padding-left: 24px;
 }
+
+/* Context Menu Styles */
+.context-menu {
+  position: absolute;
+  background-color: var(--vscode-menu-background, var(--vscode-sideBar-background));
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  z-index: 1000;
+  min-width: 220px;
+  padding: 4px 0;
+  border-radius: 3px;
+  user-select: none;
+  font-family: var(--vscode-font-family, sans-serif);
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 11px;
+  gap: 8px;
+}
+
+.context-menu-item:hover {
+  background-color: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
+  color: var(--vscode-menu-selectionForeground, var(--vscode-foreground));
+}
+
+.context-menu-item .codicon {
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.context-menu-item:hover .codicon {
+  opacity: 1;
+}
+
+.context-menu-label {
+  flex: 1;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: var(--vscode-menu-separatorBackground, var(--vscode-panel-border));
+  margin: 4px 0;
+}
+
+.pro-badge {
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  color: #ffffff !important;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  display: inline-block;
+  line-height: 1.2;
+}
+
+/* Compare Mode Indicator banner */
+.compare-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--vscode-statusBarItem-warningBackground, #c7a000);
+  color: var(--vscode-statusBarItem-warningForeground, #ffffff);
+  padding: 4px 8px;
+  font-size: 11px;
+  border-bottom: var(--jb-border);
+}
+
+.compare-banner-close {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
