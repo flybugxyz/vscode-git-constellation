@@ -29,6 +29,19 @@ function App() {
   const [remoteExpanded, setRemoteExpanded] = useState(false);  const [filesExpanded, setFilesExpanded] = useState(true);
   const [detailsExpanded, setDetailsExpanded] = useState(true);
   const [graphWidth, setGraphWidth] = useState(100);
+  const [descWidth, setDescWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('git-jb-desc-width');
+    return saved ? parseInt(saved, 10) : 450;
+  });
+  const [authorWidth, setAuthorWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('git-jb-author-width');
+    return saved ? parseInt(saved, 10) : 150;
+  });
+  const [dateWidth, setDateWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('git-jb-date-width');
+    return saved ? parseInt(saved, 10) : 150;
+  });
+  const [resizing, setResizing] = useState<{ col: 'desc' | 'author' | 'date'; startX: number; startWidth: number } | null>(null);
 
   const [checkedFiles, setCheckedFiles] = useState<Set<string>>(new Set());
   const [lastFilesList, setLastFilesList] = useState<string[]>([]);
@@ -74,6 +87,40 @@ function App() {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
+
+  useEffect(() => {
+    if (!resizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - resizing.startX;
+      const newWidth = Math.max(50, resizing.startWidth + deltaX);
+      if (resizing.col === 'desc') {
+        setDescWidth(newWidth);
+      } else if (resizing.col === 'author') {
+        setAuthorWidth(newWidth);
+      } else if (resizing.col === 'date') {
+        setDateWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      const deltaX = e.clientX - resizing.startX;
+      const newWidth = Math.max(50, resizing.startWidth + deltaX);
+      localStorage.setItem(`git-jb-${resizing.col}-width`, String(newWidth));
+      setResizing(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.classList.add('resizing');
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.classList.remove('resizing');
+    };
+  }, [resizing]);
+
 
 
   const formatDate = (dateStr: string) => {
@@ -565,13 +612,40 @@ function App() {
                     />
                   </div>
                 )}
-                <table>
+                <table style={{ tableLayout: 'fixed', width: `${graphWidth + descWidth + authorWidth + dateWidth}px`, minWidth: '100%' }}>
                   <thead>
                     <tr>
                       <th style={{ width: `${graphWidth}px` }}>Graph</th>
-                      <th>Description</th>
-                      <th style={{ width: '150px' }}>Author</th>
-                      <th style={{ width: '150px' }}>Date</th>
+                      <th style={{ width: `${descWidth}px`, position: 'relative' }}>
+                        Description
+                        <div 
+                          className="resize-handle"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setResizing({ col: 'desc', startX: e.clientX, startWidth: descWidth });
+                          }}
+                        />
+                      </th>
+                      <th style={{ width: `${authorWidth}px`, position: 'relative' }}>
+                        Author
+                        <div 
+                          className="resize-handle"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setResizing({ col: 'author', startX: e.clientX, startWidth: authorWidth });
+                          }}
+                        />
+                      </th>
+                      <th style={{ width: `${dateWidth}px`, position: 'relative' }}>
+                        Date
+                        <div 
+                          className="resize-handle"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setResizing({ col: 'date', startX: e.clientX, startWidth: dateWidth });
+                          }}
+                        />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -584,8 +658,8 @@ function App() {
                       >
                         <td style={{ width: `${graphWidth}px` }}></td>
                         <td title={commit.message}>
-                          <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', flexWrap: 'nowrap', marginRight: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                            <div style={{ display: 'flex', flexWrap: 'nowrap', marginRight: '8px', flexShrink: 0 }}>
                               {renderRefs(commit.refs)}
                             </div>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{commit.message}</span>

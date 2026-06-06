@@ -57,6 +57,7 @@ th {
   border-right: var(--jb-border);
   font-weight: normal;
   color: var(--vscode-descriptionForeground);
+  position: relative;
 }
 
 td {
@@ -513,3 +514,28 @@ button:disabled {
   background-color: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
   color: var(--vscode-menu-selectionForeground, var(--vscode-foreground));
 }
+
+/* Resizable Columns */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 100;
+  user-select: none;
+  background-color: transparent;
+  transition: background-color 0.1s;
+}
+
+.resize-handle:hover {
+  background-color: var(--vscode-sash-hoverBorder, var(--vscode-focusBorder, #007acc));
+}
+
+body.resizing,
+body.resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+

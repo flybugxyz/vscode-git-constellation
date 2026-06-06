@@ -52,6 +52,11 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - **Compare Mode**: Diff status between branches/tags or HEAD vs commit. Renders file differences list in the side pane with a banner to exit.
 - **View Diff**: Registers a custom text content provider `git-jb-diff` scheme returning full git diffs.
 
+### 6. Commit List Table
+- **Layout**: Uses `table-layout: fixed` for stable column dimensions.
+- **Resizable Columns**: Enables manual stretching of the "Description", "Author", and "Date" columns via mouse drag handlers on header borders. Final column widths are saved and persisted via `localStorage`.
+- **Graph Column**: Exempt from manual resizing; width is automatically controlled by `GitGraph`.
+
 ## Maintenance Guidelines
 - **Building**: Always run `npm run compile` to build both Webview (Vite) and Extension (Webpack).
 - **Styling**: Prefer `var(--vscode-*)` variables for theme compatibility.
