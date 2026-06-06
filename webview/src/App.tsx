@@ -892,8 +892,8 @@ function App() {
                   setResizingCommitBox({ startY: e.clientY, startHeight: commitBoxHeight });
                 }}
               />
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Commit Message</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--vscode-descriptionForeground)' }}>Commit Message</span>
                 <button
                   className="ai-generate-button"
                   title="Generate Commit Message (AI)"
@@ -910,7 +910,7 @@ function App() {
                 onChange={(e) => setCommitMessage(e.target.value)}
                 style={{ flex: 1, resize: 'none' }}
               />
-              <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: '8px' }}>
                 <button 
                   onClick={handleCommit} 
                   disabled={!commitMessage.trim() || checkedFiles.size === 0}
@@ -918,18 +918,18 @@ function App() {
                   Commit
                 </button>
                 <button 
+                  className="button-secondary"
                   onClick={handleCommitAndPush} 
                   disabled={!commitMessage.trim() || checkedFiles.size === 0}
-                  style={{ marginLeft: '8px' }}
                 >
                   Commit and Push
                 </button>
-                <label style={{ marginLeft: '12px', display: 'inline-flex', alignItems: 'center', fontSize: '11px', cursor: 'pointer', userSelect: 'none' }}>
+                <label style={{ marginLeft: '4px', display: 'inline-flex', alignItems: 'center', fontSize: '11px', cursor: 'pointer', userSelect: 'none', color: 'var(--vscode-descriptionForeground)' }}>
                   <input 
                     type="checkbox" 
                     checked={forcePush} 
                     onChange={(e) => setForcePush(e.target.checked)} 
-                    style={{ marginRight: '4px', cursor: 'pointer' }}
+                    style={{ marginRight: '6px' }}
                   />
                   Force Push
                 </label>
