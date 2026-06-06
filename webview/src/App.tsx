@@ -25,6 +25,8 @@ function App() {
   const [showBranches, setShowBranches] = useState(false);
   const [selectedCommitFiles, setSelectedCommitFiles] = useState<{hash: string, files: {status: string, path: string}[]} | null>(null);
   const [filterBranch, setFilterBranch] = useState<string>('ALL');
+  const [filterAuthor, setFilterAuthor] = useState<string>('ALL');
+  const [authorPopupPos, setAuthorPopupPos] = useState<{ x: number, y: number } | null>(null);
   const [localExpanded, setLocalExpanded] = useState(true);
   const [remoteExpanded, setRemoteExpanded] = useState(false);  const [filesExpanded, setFilesExpanded] = useState(true);
   const [detailsExpanded, setDetailsExpanded] = useState(true);
@@ -189,6 +191,14 @@ function App() {
     setSelectedCommitFiles(null);
     vscode.postMessage({ type: 'setFilter', branch });
     setShowBranches(false);
+  };
+
+  const handleFilterAuthor = (author: string) => {
+    setFilterAuthor(author);
+    setSelectedIndex(-1);
+    setSelectedCommitFiles(null);
+    vscode.postMessage({ type: 'setAuthorFilter', author });
+    setAuthorPopupPos(null);
   };
 
   const handleFileClick = (path: string) => {
@@ -627,7 +637,15 @@ function App() {
                         />
                       </th>
                       <th style={{ width: `${authorWidth}px`, position: 'relative' }}>
-                        Author
+                        <div 
+                          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setAuthorPopupPos(authorPopupPos ? null : { x: rect.left, y: rect.bottom });
+                          }}
+                        >
+                          {filterAuthor === 'ALL' ? 'Author' : filterAuthor} ▾
+                        </div>
                         <div 
                           className="resize-handle"
                           onMouseDown={(e) => {
@@ -666,7 +684,14 @@ function App() {
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{commit.message}</span>
                           </div>
                         </td>
-                        <td>{commit.author_name}</td>
+                        <td>
+                          {commit.author_name}
+                          {gitData?.currentUser && (gitData.currentUser.name === commit.author_name || gitData.currentUser.email === commit.author_email) && (
+                            <span style={{ marginLeft: '4px', opacity: 0.6, fontSize: '10px', fontStyle: 'italic' }} title="Me">
+                              (me)
+                            </span>
+                          )}
+                        </td>
                         <td>{formatDate(commit.date)}</td>
                         <td style={{ borderRight: 'none' }}></td>
                       </tr>
@@ -811,6 +836,27 @@ function App() {
           </div>
         )}
       </div>
+      {authorPopupPos && gitData?.authors && (
+        <div className="branch-popup" style={{ top: authorPopupPos.y, left: authorPopupPos.x, position: 'fixed' }}>
+          <div 
+            className={`branch-item ${filterAuthor === 'ALL' ? 'active-filter' : ''}`}
+            onClick={() => handleFilterAuthor('ALL')}
+          >
+            {filterAuthor === 'ALL' && <span style={{ marginRight: '6px' }}>✓</span>}
+            ALL
+          </div>
+          {gitData.authors.map((a: string) => (
+            <div 
+              key={a} 
+              className={`branch-item ${filterAuthor === a ? 'active-filter' : ''}`}
+              onClick={() => handleFilterAuthor(a)}
+            >
+              {filterAuthor === a && <span style={{ marginRight: '6px' }}>✓</span>}
+              {a}
+            </div>
+          ))}
+        </div>
+      )}
       {menuState && (
         <ContextMenu
           x={menuState.x}

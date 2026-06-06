@@ -13,7 +13,7 @@ export class GitService {
     }
   }
 
-  public async getLog(branch: string = 'ALL'): Promise<any | undefined> {
+  public async getLog(branch: string = 'ALL', author: string = 'ALL'): Promise<any | undefined> {
     if (!this._git) {
       console.log('GitService: No git instance available');
       return undefined;
@@ -33,6 +33,10 @@ export class GitService {
         args.push(branch);
       } else {
         args.push('--all');
+      }
+      
+      if (author && author !== 'ALL') {
+        args.push(`--author=${author}`);
       }
       
       args.push('--format=%H%x09%P%x09%D%x09%s%x09%an%x09%ae%x09%at');
@@ -456,6 +460,28 @@ export class GitService {
       vscode.window.showInformationMessage(`Deleted remote tag '${tagName}'.`);
     } catch (err) {
       vscode.window.showErrorMessage(`Failed to delete remote tag: ${err}`);
+    }
+  }
+
+  public async getAuthors(): Promise<string[]> {
+    if (!this._git) return [];
+    try {
+      const result = await this._git.raw(['log', '--format=%an', '-n', '1000']);
+      const authors = result.trim().split('\n').filter(Boolean);
+      return Array.from(new Set(authors)).sort();
+    } catch {
+      return [];
+    }
+  }
+
+  public async getCurrentUser(): Promise<{ name: string, email: string } | null> {
+    if (!this._git) return null;
+    try {
+      const name = await this._git.getConfig('user.name');
+      const email = await this._git.getConfig('user.email');
+      return { name: name.value || '', email: email.value || '' };
+    } catch {
+      return null;
     }
   }
 }

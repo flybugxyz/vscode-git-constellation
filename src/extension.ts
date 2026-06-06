@@ -58,6 +58,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'git-jb.log';
   private _view?: vscode.WebviewView;
   private _currentFilter: string = 'ALL';
+  private _currentAuthorFilter: string = 'ALL';
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -82,6 +83,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
       switch (data.type) {
         case 'ready':
           this._currentFilter = 'ALL';
+          this._currentAuthorFilter = 'ALL';
           this.refresh();
           break;
         case 'commit':
@@ -124,6 +126,10 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
 
         case 'setFilter':
           this._currentFilter = data.branch;
+          this.refresh();
+          break;
+        case 'setAuthorFilter':
+          this._currentAuthorFilter = data.author;
           this.refresh();
           break;
         case 'copySHA':
@@ -372,15 +378,17 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     console.log(`GitJBViewProvider: Refreshing with filter: ${this._currentFilter}...`);
     if (this._view) {
       try {
-        const log = await this._gitService.getLog(this._currentFilter);
+        const log = await this._gitService.getLog(this._currentFilter, this._currentAuthorFilter);
         const status = await this._gitService.getStatus();
         const branches = await this._gitService.getBranches();
+        const authors = await this._gitService.getAuthors();
+        const currentUser = await this._gitService.getCurrentUser();
 
         console.log(`GitJBViewProvider: Sending update to webview. Log: ${log?.all.length || 0} commits`);
         
         this._view.webview.postMessage({
           type: 'update',
-          payload: { log, status, branches }
+          payload: { log, status, branches, authors, currentUser }
         });
       } catch (err) {
         console.error('GitJBViewProvider: Error during refresh:', err);
