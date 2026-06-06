@@ -94,12 +94,22 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChan
           ctx.beginPath();
           ctx.strokeStyle = COLORS[commitLanes[i] % COLORS.length];
           ctx.lineWidth = 2;
-          ctx.moveTo(x, y);
-          
           if (x === targetX) {
+            ctx.moveTo(x, y);
             ctx.lineTo(targetX, targetY);
           } else {
-            ctx.bezierCurveTo(x, y + rowHeight / 2, targetX, targetY - rowHeight / 2, targetX, targetY);
+            const radius = Math.min(8, Math.abs(x - targetX));
+            if (x < targetX) {
+              // 下一个点在左边：先上再左
+              ctx.moveTo(targetX, targetY);
+              ctx.arcTo(targetX, y, x, y, radius);
+              ctx.lineTo(x, y);
+            } else {
+              // 下一个点在右边：先右再上
+              ctx.moveTo(targetX, targetY);
+              ctx.arcTo(x, targetY, x, y, radius);
+              ctx.lineTo(x, y);
+            }
           }
           ctx.stroke();
         }
