@@ -599,6 +599,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
         const log = await this._gitService.getLog(this._currentFilter, this._currentAuthorFilter, this._currentSearchFilter, this._currentFileFilter);
         const status = await this._gitService.getStatus();
         const branches = await this._gitService.getBranches();
+        const tags = await this._gitService.getTags();
         const authors = await this._gitService.getAuthors();
         const currentUser = await this._gitService.getCurrentUser();
 
@@ -606,7 +607,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
 
         this._view.webview.postMessage({
           type: 'update',
-          payload: { log, status, branches, authors, currentUser, fileFilter: this._currentFileFilter }
+          payload: { log, status, branches, tags, authors, currentUser, fileFilter: this._currentFileFilter }
         });
       } catch (err) {
         console.error('GitJBViewProvider: Error during refresh:', err);

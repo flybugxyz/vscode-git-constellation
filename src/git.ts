@@ -564,6 +564,17 @@ export class GitService {
     }
   }
 
+  public async getTags(): Promise<string[]> {
+    if (!this._git) return [];
+    try {
+      const result = await this._git.raw(['tag']);
+      return result.trim().split('\n').filter(Boolean);
+    } catch (err) {
+      console.error('Error fetching git tags:', err);
+      return [];
+    }
+  }
+
   public async getCurrentUser(): Promise<{ name: string, email: string } | null> {
     if (!this._git) return null;
     try {

@@ -34,7 +34,9 @@ function App() {
   const [fileFilter, setFileFilter] = useState<string>('');
   const [authorPopupPos, setAuthorPopupPos] = useState<{ x: number, y: number } | null>(null);
   const [localExpanded, setLocalExpanded] = useState(true);
-  const [remoteExpanded, setRemoteExpanded] = useState(false);  const [filesExpanded, setFilesExpanded] = useState(true);
+  const [remoteExpanded, setRemoteExpanded] = useState(false);
+  const [tagsExpanded, setTagsExpanded] = useState(false);
+  const [filesExpanded, setFilesExpanded] = useState(true);
   const [detailsExpanded, setDetailsExpanded] = useState(true);
   const [graphWidth, setGraphWidth] = useState(100);
   const [descWidth, setDescWidth] = useState<number>(() => {
@@ -673,6 +675,7 @@ function App() {
   const branches = gitData?.branches?.all || [];
   const localBranches: { name: string; displayName: string }[] = [];
   const remoteBranches: { name: string; displayName: string }[] = [];
+  const tags: string[] = gitData?.tags || [];
 
   branches.forEach((b: string) => {
     if (b.startsWith('remotes/')) {
@@ -887,6 +890,25 @@ function App() {
                       >
                         {b.name === filterBranch && <span style={{ marginRight: '6px' }}>✓</span>}
                         {b.displayName}
+                      </div>
+                    ))}
+
+                    <div 
+                      className="branch-group-header"
+                      onClick={() => setTagsExpanded(!tagsExpanded)}
+                    >
+                      <span className={`codicon ${tagsExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} style={{ marginRight: '6px', fontSize: '10px' }}></span>
+                      Tags ({tags.length})
+                    </div>
+                    {tagsExpanded && tags.map((t) => (
+                      <div 
+                        key={t} 
+                        className={`branch-item nested ${t === filterBranch ? 'active-filter' : ''}`}
+                        onClick={() => handleFilter(t)}
+                        onContextMenu={(e) => openContextMenu(e, { kind: 'tag', tag: t })}
+                      >
+                        {t === filterBranch && <span style={{ marginRight: '6px' }}>✓</span>}
+                        {t}
                       </div>
                     ))}
                   </div>
