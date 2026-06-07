@@ -1,10 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-
-interface Commit {
-  hash: string;
-  parents: string[];
-  message: string;
-}
+import { Commit } from './types';
 
 interface GraphProps {
   commits: Commit[];
@@ -28,6 +23,8 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChan
     if (!ctx) return;
 
     const dpr = window.devicePixelRatio || 1;
+    const style = getComputedStyle(canvas);
+    const bgColor = style.getPropertyValue('--vscode-editor-background').trim() || '#1e1e1e';
 
     if (isLinear) {
       const displayWidth = 40;
@@ -60,13 +57,18 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChan
         ctx.fill();
         
         ctx.beginPath();
-        ctx.strokeStyle = 'white';
+        ctx.strokeStyle = bgColor;
         ctx.lineWidth = 1;
         ctx.arc(xOffset, y, 4, 0, Math.PI * 2);
         ctx.stroke();
       });
       return;
     }
+
+    const commitIndices = new Map<string, number>();
+    commits.forEach((c, idx) => {
+      commitIndices.set(c.hash, idx);
+    });
 
     const activeLanes: (string | null)[] = [];
     const commitLanes: number[] = [];
@@ -89,7 +91,7 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChan
 
       activeLanes[laneIndex] = null;
       commit.parents.forEach(parentHash => {
-        const parentExistsInList = commits.some(c => c.hash === parentHash);
+        const parentExistsInList = commitIndices.has(parentHash);
         if (parentExistsInList) {
           if (activeLanes.indexOf(parentHash) === -1) {
             const emptySlot = activeLanes.indexOf(null);
@@ -130,7 +132,8 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChan
       const x = xOffset + commitLanes[i] * laneWidth;
 
       commit.parents.forEach(parentHash => {
-        const parentIdx = commits.findIndex((c, idx) => idx > i && c.hash === parentHash);
+        const idxVal = commitIndices.get(parentHash);
+        const parentIdx = (idxVal !== undefined && idxVal > i) ? idxVal : -1;
         if (parentIdx !== -1) {
           const targetY = parentIdx * rowHeight + rowHeight / 2;
           const targetX = xOffset + commitLanes[parentIdx] * laneWidth;
@@ -171,7 +174,7 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChan
       ctx.fill();
       
       ctx.beginPath();
-      ctx.strokeStyle = 'white';
+      ctx.strokeStyle = bgColor;
       ctx.lineWidth = 1;
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.stroke();

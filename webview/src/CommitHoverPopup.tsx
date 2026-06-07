@@ -1,7 +1,9 @@
 import React, { useRef, useLayoutEffect, useState } from 'react';
+import { Commit } from './types';
+import { formatDate } from './utils';
 
 interface CommitHoverPopupProps {
-  commit: any;
+  commit: Commit;
   x: number;
   y: number;
 }
@@ -35,17 +37,6 @@ export const CommitHoverPopup: React.FC<CommitHoverPopupProps> = ({ commit, x, y
 
     setCoords({ left, top });
   }, [x, y]);
-
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const timestamp = parseInt(dateStr);
-    if (isNaN(timestamp)) return dateStr;
-    try {
-      return new Date(timestamp * 1000).toLocaleString();
-    } catch {
-      return dateStr;
-    }
-  };
 
   return (
     <div

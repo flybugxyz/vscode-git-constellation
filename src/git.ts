@@ -1,5 +1,25 @@
-import { simpleGit, SimpleGit, LogResult, DefaultLogFields } from 'simple-git';
+import { simpleGit, SimpleGit } from 'simple-git';
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as pathModule from 'path';
+
+export function validateBranchName(name: string): void {
+  if (!name || name.startsWith('-') || !/^[a-zA-Z0-9._/-]+$/.test(name)) {
+    throw new Error(`Invalid branch/ref name: "${name}"`);
+  }
+}
+
+export function validateHash(hash: string): void {
+  if (!hash || !/^[a-fA-F0-9]{4,40}$/.test(hash)) {
+    throw new Error(`Invalid commit hash: "${hash}"`);
+  }
+}
+
+export function validateFilePath(path: string): void {
+  if (!path || path.startsWith('-')) {
+    throw new Error(`Invalid file path: "${path}"`);
+  }
+}
 
 export class GitService {
   private _git?: SimpleGit;
@@ -21,6 +41,23 @@ export class GitService {
     try {
       console.log(`GitService: Fetching log with parents for branch/filter: ${branch}...`);
       
+      if (branch !== 'ALL' && branch !== 'HEAD' && branch !== '') {
+        validateBranchName(branch);
+      }
+      if (author && author !== 'ALL') {
+        if (author.startsWith('-')) {
+          throw new Error(`Invalid author: "${author}"`);
+        }
+      }
+      if (search) {
+        if (search.startsWith('-')) {
+          throw new Error(`Invalid search query: "${search}"`);
+        }
+      }
+      if (filePath) {
+        validateFilePath(filePath);
+      }
+
       const formatStr = '--format=%H%x09%P%x09%D%x09%s%x09%an%x09%ae%x09%at';
       const parseCommits = (rawResult: string) => {
         const lines = rawResult.trim().split('\n');
@@ -113,6 +150,9 @@ export class GitService {
 
   public async commit(message: string, files?: string[]) {
     if (!this._git) return false;
+    if (files) {
+      files.forEach(validateFilePath);
+    }
     try {
       if (files && files.length > 0) {
         // Stage only the selected files
@@ -156,6 +196,7 @@ export class GitService {
 
   public async discardChanges(filePath: string) {
     if (!this._git) return false;
+    validateFilePath(filePath);
     try {
       // 1. Unstage any changes
       try {
@@ -189,13 +230,47 @@ export class GitService {
   public async getDiffForFiles(files: string[]): Promise<string> {
     if (!this._git || files.length === 0) return '';
     try {
-      // Temporarily stage files to get their diff
-      await this._git.add(files);
-      const diff = await this._git.diff(['--staged']);
-      // Unstage them so we don't unexpectedly modify the index if user cancels
-      await this._git.reset(['HEAD', ...files]);
-      
-      // Limit diff size to avoid huge API requests
+      files.forEach(validateFilePath);
+      const statusResult = await this._git.status();
+      const untrackedFiles = new Set<string>(statusResult.not_added);
+
+      const trackedFiles: string[] = [];
+      const untrackedList: string[] = [];
+      for (const file of files) {
+        if (untrackedFiles.has(file)) {
+          untrackedList.push(file);
+        } else {
+          trackedFiles.push(file);
+        }
+      }
+
+      let diff = '';
+      if (trackedFiles.length > 0) {
+        try {
+          diff += await this._git.diff(['HEAD', '--', ...trackedFiles]);
+        } catch {
+          diff += await this._git.diff(['--', ...trackedFiles]);
+        }
+      }
+
+      for (const file of untrackedList) {
+        try {
+          const fullPath = pathModule.resolve(this._workspaceRoot || '', file);
+          if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+            const content = fs.readFileSync(fullPath, 'utf8');
+            const lines = content.split('\n');
+            diff += `diff --git a/${file} b/${file}\n`;
+            diff += `new file mode 100644\n`;
+            diff += `--- /dev/null\n`;
+            diff += `+++ b/${file}\n`;
+            diff += `@@ -0,0 +1,${lines.length} @@\n`;
+            diff += lines.map(line => `+${line}`).join('\n') + '\n';
+          }
+        } catch (err) {
+          console.error(`Error reading untracked file ${file}:`, err);
+        }
+      }
+
       if (diff.length > 15000) {
         return diff.substring(0, 15000) + '\n... [Diff truncated due to length]';
       }
@@ -208,11 +283,17 @@ export class GitService {
 
   public async getCommitFiles(hash: string) {
     if (!this._git) return [];
+    validateHash(hash);
     try {
-      // Get list of files with status (A: Added, M: Modified, D: Deleted, etc.)
       const result = await this._git.raw(['show', '--name-status', '--pretty=format:', hash]);
       return result.trim().split('\n').filter(Boolean).map(line => {
-        const [status, path] = line.split(/\s+/);
+        const parts = line.split(/\s+/);
+        let status = parts[0];
+        let path = parts[1];
+        if (status.startsWith('R') && parts.length >= 3) {
+          status = 'R';
+          path = `${parts[1]} → ${parts[2]}`;
+        }
         return { status, path };
       });
     } catch (err) {
@@ -223,6 +304,8 @@ export class GitService {
 
   public async getFileContent(hash: string, path: string) {
     if (!this._git) return '';
+    validateHash(hash);
+    validateFilePath(path);
     try {
       return await this._git.show([`${hash}:${path}`]);
     } catch (err) {
@@ -233,6 +316,7 @@ export class GitService {
 
   public async getParentHash(hash: string) {
     if (!this._git) return undefined;
+    validateHash(hash);
     try {
       const result = await this._git.raw(['rev-parse', `${hash}^`]);
       return result.trim();
@@ -243,6 +327,9 @@ export class GitService {
 
   public async getDiff(hash?: string) {
     if (!this._git) return '';
+    if (hash) {
+      validateHash(hash);
+    }
     try {
       if (hash) {
         return await this._git.show([hash]);
@@ -257,6 +344,7 @@ export class GitService {
 
   public async checkout(branch: string) {
     if (!this._git) return;
+    validateBranchName(branch);
     try {
       await this._git.checkout(branch);
     } catch (err) {
@@ -264,34 +352,41 @@ export class GitService {
     }
   }
 
-  public async getCommitUrl(hash: string): Promise<string> {
-    if (!this._git) return '';
+  private async getHttpRemoteUrl(): Promise<string | null> {
+    if (!this._git) return null;
     try {
       const remoteUrl = await this._git.remote(['get-url', 'origin']);
-      if (remoteUrl) {
-        const trimmed = remoteUrl.trim();
-        let httpUrl = trimmed;
-        if (trimmed.startsWith('git@')) {
-          httpUrl = trimmed
-            .replace(':', '/')
-            .replace('git@', 'https://');
-        }
-        if (httpUrl.endsWith('.git')) {
-          httpUrl = httpUrl.slice(0, -4);
-        }
-        if (httpUrl.includes('gitlab.com')) {
-          return `${httpUrl}/-/commit/${hash}`;
-        }
-        return `${httpUrl}/commit/${hash}`;
+      if (!remoteUrl) return null;
+      let httpUrl = remoteUrl.trim();
+      if (httpUrl.startsWith('git@')) {
+        httpUrl = httpUrl.replace(':', '/').replace('git@', 'https://');
       }
+      if (httpUrl.endsWith('.git')) {
+        httpUrl = httpUrl.slice(0, -4);
+      }
+      return httpUrl;
     } catch (err) {
       console.error('Error getting remote URL:', err);
+      return null;
+    }
+  }
+
+  public async getCommitUrl(hash: string): Promise<string> {
+    validateHash(hash);
+    const httpUrl = await this.getHttpRemoteUrl();
+    if (httpUrl) {
+      if (httpUrl.includes('gitlab.com')) {
+        return `${httpUrl}/-/commit/${hash}`;
+      }
+      return `${httpUrl}/commit/${hash}`;
     }
     return '';
   }
 
   public async createBranch(name: string, hash: string) {
     if (!this._git) return;
+    validateBranchName(name);
+    validateHash(hash);
     try {
       await this._git.checkout(['-b', name, hash]);
       vscode.window.showInformationMessage(`Branch '${name}' created at commit ${hash.substring(0, 7)}.`);
@@ -302,6 +397,8 @@ export class GitService {
 
   public async createTag(name: string, hash: string) {
     if (!this._git) return;
+    validateBranchName(name);
+    validateHash(hash);
     try {
       await this._git.tag([name, hash]);
       vscode.window.showInformationMessage(`Tag '${name}' created at commit ${hash.substring(0, 7)}.`);
@@ -312,6 +409,8 @@ export class GitService {
 
   public async createWorktree(path: string, hash: string) {
     if (!this._git) return;
+    validateFilePath(path);
+    validateHash(hash);
     try {
       await this._git.raw(['worktree', 'add', path, hash]);
       vscode.window.showInformationMessage(`Worktree created at ${path} for commit ${hash.substring(0, 7)}.`);
@@ -322,6 +421,7 @@ export class GitService {
 
   public async cherryPick(hash: string) {
     if (!this._git) return;
+    validateHash(hash);
     try {
       await this._git.raw(['cherry-pick', hash]);
       vscode.window.showInformationMessage(`Cherry-picked commit ${hash.substring(0, 7)}.`);
@@ -332,6 +432,9 @@ export class GitService {
 
   public async cherryPickWithWorktree(path: string, branchName: string, hash: string) {
     if (!this._git) return;
+    validateFilePath(path);
+    validateBranchName(branchName);
+    validateHash(hash);
     try {
       await this._git.raw(['worktree', 'add', '-b', branchName, path, 'HEAD']);
       const wtGit = simpleGit(path);
@@ -344,6 +447,7 @@ export class GitService {
 
   public async revertCommit(hash: string) {
     if (!this._git) return;
+    validateHash(hash);
     try {
       await this._git.revert(hash, ['--no-edit']);
       vscode.window.showInformationMessage(`Reverted commit ${hash.substring(0, 7)}.`);
@@ -354,6 +458,7 @@ export class GitService {
 
   public async rebase(hash: string) {
     if (!this._git) return;
+    validateBranchName(hash);
     try {
       await this._git.rebase([hash]);
       vscode.window.showInformationMessage(`Successfully rebased current branch onto ${hash.substring(0, 7)}.`);
@@ -364,6 +469,7 @@ export class GitService {
 
   public async merge(hash: string) {
     if (!this._git) return;
+    validateBranchName(hash);
     try {
       await this._git.merge([hash]);
       vscode.window.showInformationMessage(`Successfully merged commit ${hash.substring(0, 7)}.`);
@@ -374,10 +480,17 @@ export class GitService {
 
   public async getCompareFiles(hash: string) {
     if (!this._git) return [];
+    validateHash(hash);
     try {
       const result = await this._git.raw(['diff', '--name-status', 'HEAD', hash]);
       return result.trim().split('\n').filter(Boolean).map(line => {
-        const [status, path] = line.split(/\s+/);
+        const parts = line.split(/\s+/);
+        let status = parts[0];
+        let path = parts[1];
+        if (status.startsWith('R') && parts.length >= 3) {
+          status = 'R';
+          path = `${parts[1]} → ${parts[2]}`;
+        }
         return { status, path };
       });
     } catch (err) {
@@ -387,60 +500,34 @@ export class GitService {
   }
 
   public async getBranchUrl(branchName: string): Promise<string> {
-    if (!this._git) return '';
-    try {
-      const remoteUrl = await this._git.remote(['get-url', 'origin']);
-      if (remoteUrl) {
-        const trimmed = remoteUrl.trim();
-        let httpUrl = trimmed;
-        if (trimmed.startsWith('git@')) {
-          httpUrl = trimmed
-            .replace(':', '/')
-            .replace('git@', 'https://');
-        }
-        if (httpUrl.endsWith('.git')) {
-          httpUrl = httpUrl.slice(0, -4);
-        }
-        const cleanBranch = branchName.replace(/^remotes\/[^\/]+\//, '').replace(/^origin\//, '');
-        if (httpUrl.includes('gitlab.com')) {
-          return `${httpUrl}/-/tree/${cleanBranch}`;
-        }
-        return `${httpUrl}/tree/${cleanBranch}`;
+    validateBranchName(branchName);
+    const httpUrl = await this.getHttpRemoteUrl();
+    if (httpUrl) {
+      const cleanBranch = branchName.replace(/^remotes\/[^\/]+\//, '').replace(/^origin\//, '');
+      if (httpUrl.includes('gitlab.com')) {
+        return `${httpUrl}/-/tree/${cleanBranch}`;
       }
-    } catch (err) {
-      console.error('Error getting branch URL:', err);
+      return `${httpUrl}/tree/${cleanBranch}`;
     }
     return '';
   }
 
   public async getTagUrl(tagName: string): Promise<string> {
-    if (!this._git) return '';
-    try {
-      const remoteUrl = await this._git.remote(['get-url', 'origin']);
-      if (remoteUrl) {
-        const trimmed = remoteUrl.trim();
-        let httpUrl = trimmed;
-        if (trimmed.startsWith('git@')) {
-          httpUrl = trimmed
-            .replace(':', '/')
-            .replace('git@', 'https://');
-        }
-        if (httpUrl.endsWith('.git')) {
-          httpUrl = httpUrl.slice(0, -4);
-        }
-        if (httpUrl.includes('gitlab.com')) {
-          return `${httpUrl}/-/tags/${tagName}`;
-        }
-        return `${httpUrl}/releases/tag/${tagName}`;
+    validateBranchName(tagName);
+    const httpUrl = await this.getHttpRemoteUrl();
+    if (httpUrl) {
+      if (httpUrl.includes('gitlab.com')) {
+        return `${httpUrl}/-/tags/${tagName}`;
       }
-    } catch (err) {
-      console.error('Error getting tag URL:', err);
+      return `${httpUrl}/releases/tag/${tagName}`;
     }
     return '';
   }
 
   public async createBranchFrom(newName: string, startPoint: string) {
     if (!this._git) return;
+    validateBranchName(newName);
+    validateBranchName(startPoint);
     try {
       await this._git.checkout(['-b', newName, startPoint]);
       vscode.window.showInformationMessage(`Branch '${newName}' created from '${startPoint}'.`);
@@ -451,6 +538,7 @@ export class GitService {
 
   public async pullBranch(branchName: string) {
     if (!this._git) return;
+    validateBranchName(branchName);
     try {
       const cleanBranch = branchName.replace(/^remotes\/[^\/]+\//, '');
       await this._git.pull('origin', cleanBranch);
@@ -462,6 +550,8 @@ export class GitService {
 
   public async pushBranch(branchName: string, remote: string = 'origin') {
     if (!this._git) return;
+    validateBranchName(branchName);
+    validateBranchName(remote);
     try {
       const cleanBranch = branchName.replace(/^remotes\/[^\/]+\//, '');
       await this._git.push(remote, cleanBranch);
@@ -473,6 +563,8 @@ export class GitService {
 
   public async renameBranch(oldName: string, newName: string) {
     if (!this._git) return;
+    validateBranchName(oldName);
+    validateBranchName(newName);
     try {
       await this._git.branch(['-m', oldName, newName]);
       vscode.window.showInformationMessage(`Renamed branch from '${oldName}' to '${newName}'.`);
@@ -483,6 +575,7 @@ export class GitService {
 
   public async deleteBranch(branchName: string, isRemote: boolean) {
     if (!this._git) return;
+    validateBranchName(branchName);
     try {
       if (isRemote) {
         const parts = branchName.replace(/^remotes\//, '').split('/');
@@ -501,10 +594,18 @@ export class GitService {
 
   public async compareBranches(branchA: string, branchB: string) {
     if (!this._git) return [];
+    validateBranchName(branchA);
+    validateBranchName(branchB);
     try {
       const result = await this._git.raw(['diff', '--name-status', branchA, branchB]);
       return result.trim().split('\n').filter(Boolean).map(line => {
-        const [status, path] = line.split(/\s+/);
+        const parts = line.split(/\s+/);
+        let status = parts[0];
+        let path = parts[1];
+        if (status.startsWith('R') && parts.length >= 3) {
+          status = 'R';
+          path = `${parts[1]} → ${parts[2]}`;
+        }
         return { status, path };
       });
     } catch (err) {
@@ -515,6 +616,8 @@ export class GitService {
 
   public async setUpstream(branchName: string, upstreamName: string) {
     if (!this._git) return;
+    validateBranchName(branchName);
+    validateBranchName(upstreamName);
     try {
       await this._git.branch([`--set-upstream-to=${upstreamName}`, branchName]);
       vscode.window.showInformationMessage(`Set upstream of '${branchName}' to '${upstreamName}'.`);
@@ -524,6 +627,7 @@ export class GitService {
   }
 
   public async getTagDetails(tagName: string): Promise<string> {
+    validateBranchName(tagName);
     if (!this._git) return '';
     try {
       return await this._git.show([tagName]);
@@ -535,6 +639,7 @@ export class GitService {
 
   public async deleteTag(tagName: string) {
     if (!this._git) return;
+    validateBranchName(tagName);
     try {
       await this._git.tag(['-d', tagName]);
       vscode.window.showInformationMessage(`Deleted local tag '${tagName}'.`);
@@ -545,6 +650,7 @@ export class GitService {
 
   public async deleteRemoteTag(tagName: string) {
     if (!this._git) return;
+    validateBranchName(tagName);
     try {
       await this._git.push('origin', tagName, ['--delete']);
       vscode.window.showInformationMessage(`Deleted remote tag '${tagName}'.`);
@@ -588,6 +694,7 @@ export class GitService {
 
   public async cherryPickMultiple(hashes: string[]) {
     if (!this._git || hashes.length === 0) return;
+    hashes.forEach(validateHash);
     try {
       await this._git.raw(['cherry-pick', ...hashes]);
       vscode.window.showInformationMessage(`Successfully cherry-picked ${hashes.length} commits.`);
@@ -600,6 +707,7 @@ export class GitService {
     if (!this._git || hashes.length <= 1) {
       return { valid: false, reason: 'Please select at least 2 commits to squash.' };
     }
+    hashes.forEach(validateHash);
     try {
       // 1. Get current branch to make sure we're not detached
       const branchInfo = await this._git.branch(['-a']);
@@ -639,6 +747,7 @@ export class GitService {
 
   public async squashCommits(hashes: string[], commitMessage: string): Promise<boolean> {
     if (!this._git || hashes.length <= 1) return false;
+    hashes.forEach(validateHash);
     
     let originalBranch = '';
     let originalHead = '';
@@ -657,9 +766,9 @@ export class GitService {
       const branchHashes = rawLog.trim().split('\n').filter(Boolean);
       
       const sortedByHistory = hashes
-        .map(h => ({ hash: h, index: branchHashes.indexOf(h) }))
-        .filter(item => item.index !== -1)
-        .sort((a, b) => a.index - b.index); // youngest (smallest index) to oldest (largest index)
+         .map(h => ({ hash: h, index: branchHashes.indexOf(h) }))
+         .filter(item => item.index !== -1)
+         .sort((a, b) => a.index - b.index); // youngest (smallest index) to oldest (largest index)
       
       if (sortedByHistory.length !== hashes.length) {
         throw new Error('Some commits are not on the current branch.');
@@ -731,6 +840,7 @@ export class GitService {
 
   public async getCommitMessages(hashes: string[]): Promise<string[]> {
     if (!this._git) return [];
+    hashes.forEach(validateHash);
     const messages: string[] = [];
     for (const hash of hashes) {
       try {

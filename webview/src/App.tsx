@@ -4,25 +4,34 @@ import { GitGraph } from './GitGraph';
 import { FileTree } from './FileTree';
 import { ContextMenu, MenuEntry } from './ContextMenu';
 import { CommitHoverPopup } from './CommitHoverPopup';
+import { Commit, GitStatusFile, GitData } from './types';
+import { formatDate } from './utils';
 
 declare const acquireVsCodeApi: any;
 const vscode = acquireVsCodeApi();
 
 type MenuStateBase = { x: number; y: number };
-type CommitMenu = MenuStateBase & { kind: 'commit'; commit: any; index: number };
+type CommitMenu = MenuStateBase & { kind: 'commit'; commit: Commit; index: number };
 type BranchMenu = MenuStateBase & { kind: 'branch'; branch: string; isRemote: boolean };
 type TagMenu = MenuStateBase & { kind: 'tag'; tag: string };
 
 export type MenuState = CommitMenu | BranchMenu | TagMenu;
 
 function App() {
-  const [gitData, setGitData] = useState<any>(null);
+  const [gitData, setGitData] = useState<GitData | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [anchorIndex, setAnchorIndex] = useState<number>(-1);
   const [menuState, setMenuState] = useState<MenuState | null>(null);
   const [isCompareMode, setIsCompareMode] = useState(false);
-  const [pinnedBranches, setPinnedBranches] = useState<Set<string>>(new Set());
+  const [pinnedBranches, setPinnedBranches] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('pinnedBranches');
+      return saved ? new Set<string>(JSON.parse(saved)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
   const [activeTab, setActiveTab] = useState<'log' | 'local'>('log');
   const [commitMessage, setCommitMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -61,7 +70,7 @@ function App() {
 
   const [checkedFiles, setCheckedFiles] = useState<Set<string>>(new Set());
   const [hoveredCommit, setHoveredCommit] = useState<{
-    commit: any;
+    commit: Commit;
     x: number;
     y: number;
   } | null>(null);
@@ -72,21 +81,22 @@ function App() {
 
   useEffect(() => {
     if (!gitData?.status?.files) return;
-    const currentPaths = gitData.status.files.map((f: any) => f.path);
+    const currentPaths = gitData.status.files.map((f: GitStatusFile) => f.path);
     
     // Compare currentPaths with lastFilesList
     const added = currentPaths.filter((p: string) => !lastFilesList.includes(p));
     const removed = lastFilesList.filter((p: string) => !currentPaths.includes(p));
     
     if (added.length > 0 || removed.length > 0) {
-      const newChecked = new Set(checkedFiles);
-      removed.forEach((p: string) => newChecked.delete(p));
-      added.forEach((p: string) => newChecked.add(p));
-      
-      setCheckedFiles(newChecked);
+      setCheckedFiles(prevChecked => {
+        const newChecked = new Set(prevChecked);
+        removed.forEach((p: string) => newChecked.delete(p));
+        added.forEach((p: string) => newChecked.add(p));
+        return newChecked;
+      });
       setLastFilesList(currentPaths);
     }
-  }, [gitData?.status?.files]);
+  }, [gitData?.status?.files, lastFilesList]);
 
   useEffect(() => {
     vscode.postMessage({ type: 'ready' });
@@ -186,22 +196,6 @@ function App() {
     };
   }, [resizingCommitBox]);
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const timestamp = parseInt(dateStr);
-    if (isNaN(timestamp)) return dateStr;
-    
-    try {
-      return new Date(timestamp * 1000).toLocaleString([], {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      return dateStr;
-    }
-  };
 
   const handleCommit = () => {
     if (!commitMessage.trim() || checkedFiles.size === 0) return;
@@ -450,7 +444,7 @@ function App() {
       case 'cherryPick':
         if (selectedIndices.length > 1) {
           const sortedIndices = [...selectedIndices].sort((a, b) => b - a); // oldest first
-          const hashes = sortedIndices.map(i => gitData.log.all[i].hash);
+          const hashes = sortedIndices.map(i => gitData?.log?.all?.[i]?.hash).filter((h): h is string => !!h);
           vscode.postMessage({ type: 'cherryPickMultiple', hashes });
         } else {
           vscode.postMessage({ type: 'cherryPick', hash: commit.hash });
@@ -461,7 +455,7 @@ function App() {
         break;
       case 'squashCommits': {
         const sortedIndices = [...selectedIndices].sort((a, b) => b - a); // oldest first
-        const hashes = sortedIndices.map(i => gitData.log.all[i].hash);
+        const hashes = sortedIndices.map(i => gitData?.log?.all?.[i]?.hash).filter((h): h is string => !!h);
         vscode.postMessage({ type: 'squashCommits', hashes });
         break;
       }
@@ -786,7 +780,7 @@ function App() {
                     onClick={() => {
                       if (selectedIndices.length > 1) {
                         const sortedIndices = [...selectedIndices].sort((a, b) => b - a); // oldest first
-                        const hashes = sortedIndices.map(i => gitData.log.all[i].hash);
+                        const hashes = sortedIndices.map(i => gitData?.log?.all?.[i]?.hash).filter((h): h is string => !!h);
                         vscode.postMessage({ type: 'cherryPickMultiple', hashes });
                       } else if (selectedCommit) {
                         vscode.postMessage({ type: 'cherryPick', hash: selectedCommit.hash });
@@ -865,7 +859,7 @@ function App() {
                     {localExpanded && localBranches.map((b) => (
                       <div 
                         key={b.name} 
-                        className={`branch-item nested ${b.name === filterBranch ? 'active-filter' : ''} ${b.name === gitData.branches.current ? 'current' : ''}`}
+                        className={`branch-item nested ${b.name === filterBranch ? 'active-filter' : ''} ${b.name === gitData?.branches?.current ? 'current' : ''}`}
                         onClick={() => handleFilter(b.name)}
                         onContextMenu={(e) => openContextMenu(e, { kind: 'branch', branch: b.name, isRemote: false })}
                       >
@@ -999,7 +993,7 @@ function App() {
                             </span>
                           )}
                         </td>
-                        <td>{formatDate(commit.date)}</td>
+                        <td>{formatDate(commit.date, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                         <td style={{ borderRight: 'none' }}></td>
                       </tr>
                     ))}
@@ -1071,11 +1065,11 @@ function App() {
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Date:</span>
-                      <span className="detail-value">{formatDate(selectedCommit?.date)}</span>
+                      <span className="detail-value">{formatDate(selectedCommit?.date || '', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Labels:</span>
-                      <span className="detail-value">{renderRefs(selectedCommit?.refs)}</span>
+                      <span className="detail-value">{renderRefs(selectedCommit?.refs || '')}</span>
                     </div>
                   </div>
                 )}
@@ -1087,7 +1081,7 @@ function App() {
             <div className="files-list">
               {gitData?.status?.files && gitData.status.files.length > 0 ? (
                 <FileTree
-                  files={gitData.status.files.map((f: any) => {
+                  files={gitData.status.files.map((f: GitStatusFile) => {
                     const getStatusChar = () => {
                       const ind = f.index;
                       const wd = f.working_dir;

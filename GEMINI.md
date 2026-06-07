@@ -70,12 +70,22 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - **Communication**: Use `vscode.postMessage` and `window.addEventListener('message', ...)` for host-webview bridge.
 - **New Features**: Ensure High-DPI support for any new Canvas elements.
 
+## Testing
+- **Framework**: Vitest unit testing.
+- **Run command**: `npm run test` executes the unit test suite inside `src/__tests__/`.
+- **Mocks**: Out-of-process modules like `vscode` and `simple-git` are mocked under `src/__tests__/git.test.ts`.
+
 ## File Manifest
-- `package.json`: Extension entry point and contributes.
+- `package.json`: Extension entry point, scripts, and contributes.
+- `tsconfig.json`: TypeScript compiler options and workspace exclusions.
+- `vitest.config.ts`: Vitest test suite runner configuration.
 - `src/extension.ts`: Main activation logic and message handling.
-- `src/git.ts`: Git abstraction layer.
+- `src/git.ts`: Git abstraction layer with input validation safeguards.
+- `src/__tests__/git.test.ts`: Unit test suite verifying GitService operations.
 - `webview/index.html`: Webview entry.
 - `webview/src/App.tsx`: Main UI orchestration.
+- `webview/src/types.ts`: Shared TypeScript interface definitions for domain objects.
+- `webview/src/utils.ts`: Shared UI utility helpers.
 - `webview/src/GitGraph.tsx`: Commit graph rendering.
 - `webview/src/FileTree.tsx`: Modified files tree view.
 - `webview/src/ContextMenu.tsx`: Unified context menu component with keyboard navigation.

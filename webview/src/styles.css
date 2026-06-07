@@ -429,7 +429,7 @@ input[type="checkbox"] {
 
 /* Context Menu Styles */
 .context-menu {
-  position: absolute;
+  position: fixed;
   background-color: var(--vscode-menu-background, var(--vscode-sideBar-background));
   color: var(--vscode-menu-foreground, var(--vscode-foreground));
   border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border));

@@ -137,17 +137,17 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Refresh on git changes
   const watcher = vscode.workspace.createFileSystemWatcher('**/.git/refs/heads/*');
-  watcher.onDidChange(() => provider.refresh());
-  watcher.onDidCreate(() => provider.refresh());
-  watcher.onDidDelete(() => provider.refresh());
+  watcher.onDidChange(() => provider.scheduleRefresh());
+  watcher.onDidCreate(() => provider.scheduleRefresh());
+  watcher.onDidDelete(() => provider.scheduleRefresh());
   context.subscriptions.push(watcher);
 
   // Refresh on file save, creation, deletion, rename to keep local changes up to date
   context.subscriptions.push(
-    vscode.workspace.onDidSaveTextDocument(() => provider.refresh()),
-    vscode.workspace.onDidCreateFiles(() => provider.refresh()),
-    vscode.workspace.onDidDeleteFiles(() => provider.refresh()),
-    vscode.workspace.onDidRenameFiles(() => provider.refresh())
+    vscode.workspace.onDidSaveTextDocument(() => provider.scheduleRefresh()),
+    vscode.workspace.onDidCreateFiles(() => provider.scheduleRefresh()),
+    vscode.workspace.onDidDeleteFiles(() => provider.scheduleRefresh()),
+    vscode.workspace.onDidRenameFiles(() => provider.scheduleRefresh())
   );
 }
 
@@ -158,6 +158,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   private _currentAuthorFilter: string = 'ALL';
   private _currentSearchFilter: string = '';
   private _currentFileFilter: string = '';
+  private _refreshTimer?: NodeJS.Timeout;
 
   public setFileFilter(file: string) {
     this._currentFileFilter = file;
@@ -165,6 +166,15 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
       this._view.show?.(true);
     }
     this.refresh();
+  }
+
+  public scheduleRefresh() {
+    if (this._refreshTimer) {
+      clearTimeout(this._refreshTimer);
+    }
+    this._refreshTimer = setTimeout(() => {
+      this.refresh();
+    }, 100);
   }
 
   constructor(
@@ -221,7 +231,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
             this.refresh();
           }
           break;
-        }//aa
+        }
         case 'generateCommitMessage': {
           const config = vscode.workspace.getConfiguration('git-constellation.openai');
           const apiUrl = config.get<string>('apiUrl');
@@ -596,14 +606,16 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     console.log(`GitJBViewProvider: Refreshing with filter: ${this._currentFilter}...`);
     if (this._view) {
       try {
-        const log = await this._gitService.getLog(this._currentFilter, this._currentAuthorFilter, this._currentSearchFilter, this._currentFileFilter);
-        const status = await this._gitService.getStatus();
-        const branches = await this._gitService.getBranches();
-        const tags = await this._gitService.getTags();
-        const authors = await this._gitService.getAuthors();
-        const currentUser = await this._gitService.getCurrentUser();
+        const [log, status, branches, tags, authors, currentUser] = await Promise.all([
+          this._gitService.getLog(this._currentFilter, this._currentAuthorFilter, this._currentSearchFilter, this._currentFileFilter),
+          this._gitService.getStatus(),
+          this._gitService.getBranches(),
+          this._gitService.getTags(),
+          this._gitService.getAuthors(),
+          this._gitService.getCurrentUser()
+        ]);
 
-        console.log(`GitJBViewProvider: Sending update to webview. Log: ${log?.all.length || 0} commits`);
+        console.log(`GitJBViewProvider: Sending update to webview. Log: ${log?.all?.length || 0} commits`);
 
         this._view.webview.postMessage({
           type: 'update',

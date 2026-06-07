@@ -10,5 +10,5 @@
     "esModuleInterop": true,
     "types": ["node"]
   },
-  "exclude": ["node_modules", ".vscode-test", "webview", "vite.config.ts", "dist", "dist-webview"]
+  "exclude": ["node_modules", ".vscode-test", "webview", "vite.config.ts", "vitest.config.ts", "dist", "dist-webview"]
 }
