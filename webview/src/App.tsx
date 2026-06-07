@@ -954,6 +954,7 @@ function App() {
                         key={commit.hash} 
                         className={selectedIndices.includes(idx) ? 'selected' : ''}
                         onClick={(e) => handleSelectCommit(idx, commit.hash, e)}
+                        onMouseDown={(e) => { if (e.shiftKey) e.preventDefault(); }}
                         onContextMenu={(e) => handleRowContextMenu(e, commit, idx)}
                         onMouseEnter={(e) => handleRowMouseEnter(e, commit)}
                         onMouseMove={handleRowMouseMove}

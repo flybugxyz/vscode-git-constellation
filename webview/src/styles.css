@@ -41,6 +41,8 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 thead {
