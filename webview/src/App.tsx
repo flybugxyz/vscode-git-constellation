@@ -774,6 +774,7 @@ function App() {
                       commits={gitData.log.all} 
                       rowHeight={24} 
                       onWidthChange={setGraphWidth}
+                      isLinear={!!fileFilter}
                     />
                   </div>
                 )}

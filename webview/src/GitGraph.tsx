@@ -10,13 +10,14 @@ interface GraphProps {
   commits: Commit[];
   rowHeight: number;
   onWidthChange?: (width: number) => void;
+  isLinear?: boolean;
 }
 
 const COLORS = [
   '#4a9eff', '#ff5555', '#50fa7b', '#f1fa8c', '#bd93f9', '#ff79c6', '#8be9fd'
 ];
 
-export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChange }) => {
+export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChange, isLinear }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -25,6 +26,47 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChan
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    if (isLinear) {
+      const displayWidth = 40;
+      const displayHeight = commits.length * rowHeight;
+      const xOffset = 20;
+      if (onWidthChange) {
+        onWidthChange(displayWidth);
+      }
+      canvas.width = displayWidth * dpr;
+      canvas.height = displayHeight * dpr;
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, displayWidth, displayHeight);
+
+      // Draw straight vertical connection line
+      ctx.beginPath();
+      ctx.strokeStyle = COLORS[0];
+      ctx.lineWidth = 2;
+      ctx.moveTo(xOffset, rowHeight / 2);
+      ctx.lineTo(xOffset, (commits.length - 1) * rowHeight + rowHeight / 2);
+      ctx.stroke();
+
+      // Draw nodes
+      commits.forEach((commit, i) => {
+        const y = i * rowHeight + rowHeight / 2;
+        ctx.beginPath();
+        ctx.fillStyle = COLORS[0];
+        ctx.arc(xOffset, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.arc(xOffset, y, 4, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      return;
+    }
 
     const activeLanes: (string | null)[] = [];
     const commitLanes: number[] = [];
@@ -47,12 +89,15 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChan
 
       activeLanes[laneIndex] = null;
       commit.parents.forEach(parentHash => {
-        if (activeLanes.indexOf(parentHash) === -1) {
-          const emptySlot = activeLanes.indexOf(null);
-          if (emptySlot !== -1) {
-            activeLanes[emptySlot] = parentHash;
-          } else {
-            activeLanes.push(parentHash);
+        const parentExistsInList = commits.some(c => c.hash === parentHash);
+        if (parentExistsInList) {
+          if (activeLanes.indexOf(parentHash) === -1) {
+            const emptySlot = activeLanes.indexOf(null);
+            if (emptySlot !== -1) {
+              activeLanes[emptySlot] = parentHash;
+            } else {
+              activeLanes.push(parentHash);
+            }
           }
         }
       });
@@ -61,7 +106,6 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChan
 
     const laneWidth = 12;
     const xOffset = 10;
-    const dpr = window.devicePixelRatio || 1;
     
     // Calculate required width based on actual max lanes used
     const displayWidth = Math.max(40, (maxLanesCount) * laneWidth + xOffset + 10);
@@ -133,7 +177,7 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChan
       ctx.stroke();
     });
 
-  }, [commits, rowHeight]);
+  }, [commits, rowHeight, isLinear]);
 
   return (
     <canvas 
