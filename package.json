@@ -22,8 +22,21 @@
       {
         "command": "git-constellation.testOpenAISettings",
         "title": "Test OpenAI Settings"
+      },
+      {
+        "command": "git-constellation.viewFileHistory",
+        "title": "View File History (GitConstellation)"
       }
     ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "git-constellation.viewFileHistory",
+          "when": "resourceScheme == file",
+          "group": "git-constellation"
+        }
+      ]
+    },
     "configuration": {
       "title": "GitConstellation",
       "properties": {

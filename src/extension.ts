@@ -94,6 +94,19 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand('git-constellation.viewFileHistory', async (uri: vscode.Uri) => {
+      if (uri && uri.scheme === 'file') {
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (workspaceRoot) {
+          const relativePath = path.relative(workspaceRoot, uri.fsPath).replace(/\\/g, '/');
+          await vscode.commands.executeCommand('git-constellation.log.focus');
+          provider.setFileFilter(relativePath);
+        }
+      }
+    })
+  );
+
   // Register custom content provider for showing historical files
   const contentProvider = new (class implements vscode.TextDocumentContentProvider {
     async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
@@ -144,6 +157,15 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   private _currentFilter: string = 'ALL';
   private _currentAuthorFilter: string = 'ALL';
   private _currentSearchFilter: string = '';
+  private _currentFileFilter: string = '';
+
+  public setFileFilter(file: string) {
+    this._currentFileFilter = file;
+    if (this._view) {
+      this._view.show?.(true);
+    }
+    this.refresh();
+  }
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -167,9 +189,6 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (data) => {
       switch (data.type) {
         case 'ready':
-          this._currentFilter = 'ALL';
-          this._currentAuthorFilter = 'ALL';
-          this._currentSearchFilter = '';
           this.refresh();
           break;
         case 'commit':
@@ -278,6 +297,10 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           }
           break;
 
+        case 'setFileFilter':
+          this._currentFileFilter = data.file;
+          this.refresh();
+          break;
         case 'setFilter':
           this._currentFilter = data.branch;
           this.refresh();
@@ -536,7 +559,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     console.log(`GitJBViewProvider: Refreshing with filter: ${this._currentFilter}...`);
     if (this._view) {
       try {
-        const log = await this._gitService.getLog(this._currentFilter, this._currentAuthorFilter, this._currentSearchFilter);
+        const log = await this._gitService.getLog(this._currentFilter, this._currentAuthorFilter, this._currentSearchFilter, this._currentFileFilter);
         const status = await this._gitService.getStatus();
         const branches = await this._gitService.getBranches();
         const authors = await this._gitService.getAuthors();
@@ -546,7 +569,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
 
         this._view.webview.postMessage({
           type: 'update',
-          payload: { log, status, branches, authors, currentUser }
+          payload: { log, status, branches, authors, currentUser, fileFilter: this._currentFileFilter }
         });
       } catch (err) {
         console.error('GitJBViewProvider: Error during refresh:', err);

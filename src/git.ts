@@ -13,7 +13,7 @@ export class GitService {
     }
   }
 
-  public async getLog(branch: string = 'ALL', author: string = 'ALL', search: string = ''): Promise<any | undefined> {
+  public async getLog(branch: string = 'ALL', author: string = 'ALL', search: string = '', filePath: string = ''): Promise<any | undefined> {
     if (!this._git) {
       console.log('GitService: No git instance available');
       return undefined;
@@ -61,6 +61,10 @@ export class GitService {
       }
       
       args.push(formatStr);
+
+      if (filePath) {
+        args.push('--', filePath);
+      }
 
       const result = await this._git.raw(args);
       const commits = parseCommits(result);

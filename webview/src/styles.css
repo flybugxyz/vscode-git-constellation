@@ -678,4 +678,38 @@ body.resizing-row * {
   transform: scale(1.1);
 }
 
+/* File Filter Badge */
+.file-filter-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--vscode-badge-background, var(--vscode-button-secondaryBackground, #3a3d3d));
+  color: var(--vscode-badge-foreground, var(--vscode-button-secondaryForeground, #ffffff));
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  margin-left: 8px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-filter-badge .codicon {
+  font-size: 10px;
+}
+
+.file-filter-badge-close {
+  cursor: pointer;
+  font-weight: bold;
+  margin-left: 2px;
+  opacity: 0.8;
+  transition: opacity 0.1s;
+}
+
+.file-filter-badge-close:hover {
+  opacity: 1;
+}
+
+
 

@@ -51,6 +51,7 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - **Tag Menu**: View tag details (registers custom content provider `git-constellation-tag` scheme), create branch, compare, delete (local/remote), copy tag name, open in browser.
 - **Compare Mode**: Diff status between branches/tags or HEAD vs commit. Renders file differences list in the side pane with a banner to exit.
 - **View Diff**: Registers a custom text content provider `git-constellation-diff` scheme returning full git diffs.
+- **VS Code Explorer Context Menu**: Right-clicking a file in the VS Code file explorer context menu displays a "View File History (GitConstellation)" option, which automatically focuses the extension panel and filters the commit list to show the file's git history.
 
 ### 6. Commit List Table
 - **Layout**: Uses `table-layout: fixed` for stable column dimensions.

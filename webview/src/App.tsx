@@ -28,6 +28,7 @@ function App() {
   const [filterBranch, setFilterBranch] = useState<string>('ALL');
   const [filterAuthor, setFilterAuthor] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [fileFilter, setFileFilter] = useState<string>('');
   const [authorPopupPos, setAuthorPopupPos] = useState<{ x: number, y: number } | null>(null);
   const [localExpanded, setLocalExpanded] = useState(true);
   const [remoteExpanded, setRemoteExpanded] = useState(false);  const [filesExpanded, setFilesExpanded] = useState(true);
@@ -83,6 +84,9 @@ function App() {
       switch (message.type) {
         case 'update':
           setGitData(message.payload);
+          if (message.payload.fileFilter !== undefined) {
+            setFileFilter(message.payload.fileFilter);
+          }
           break;
         case 'files':
           setSelectedCommitFiles({ hash: message.hash, files: message.files });
@@ -614,6 +618,24 @@ function App() {
                     >
                       ✕
                     </span>
+                  )}
+                  {fileFilter && (
+                    <div 
+                      className="file-filter-badge"
+                      title={`Filtering history by file: ${fileFilter}`}
+                    >
+                      <span className="codicon codicon-file"></span>
+                      <span>{fileFilter.split('/').pop()}</span>
+                      <span 
+                        className="file-filter-badge-close"
+                        onClick={() => {
+                          setFileFilter('');
+                          vscode.postMessage({ type: 'setFileFilter', file: '' });
+                        }}
+                      >
+                        ✕
+                      </span>
+                    </div>
                   )}
                   <span style={{ marginLeft: '20px' }}>{gitData?.log?.all.length || 0} commits</span>
                 </div>
