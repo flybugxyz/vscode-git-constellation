@@ -711,5 +711,84 @@ body.resizing-row * {
   opacity: 1;
 }
 
+/* Commit Hover Popup */
+.commit-hover-popup {
+  position: fixed;
+  background-color: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background, #252526));
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground, #cccccc));
+  border: 1px solid var(--vscode-editorHoverWidget-border, var(--vscode-panel-border, #454545));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  padding: 10px 12px;
+  border-radius: 4px;
+  z-index: 10000;
+  max-width: 400px;
+  font-family: var(--vscode-font-family, sans-serif);
+  font-size: 11px;
+  pointer-events: none; /* Make it transparent to mouse events so it doesn't block hover changes */
+  animation: hover-popup-fade-in 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@keyframes hover-popup-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hover-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--vscode-panel-border, #454545);
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+}
+
+.hover-popup-hash {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.hover-popup-message {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--vscode-editor-foreground, var(--vscode-foreground, #ffffff));
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.hover-popup-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.hover-popup-meta-row {
+  display: flex;
+  gap: 6px;
+}
+
+.hover-popup-meta-label {
+  color: var(--vscode-descriptionForeground, #858585);
+  min-width: 50px;
+  flex-shrink: 0;
+}
+
+.hover-popup-meta-value {
+  word-break: break-word;
+  color: var(--vscode-foreground, #cccccc);
+}
+
+
 
 

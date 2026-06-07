@@ -3,6 +3,7 @@ import './styles.css';
 import { GitGraph } from './GitGraph';
 import { FileTree } from './FileTree';
 import { ContextMenu, MenuEntry } from './ContextMenu';
+import { CommitHoverPopup } from './CommitHoverPopup';
 
 declare const acquireVsCodeApi: any;
 const vscode = acquireVsCodeApi();
@@ -55,6 +56,13 @@ function App() {
   const [resizingCommitBox, setResizingCommitBox] = useState<{ startY: number; startHeight: number } | null>(null);
 
   const [checkedFiles, setCheckedFiles] = useState<Set<string>>(new Set());
+  const [hoveredCommit, setHoveredCommit] = useState<{
+    commit: any;
+    x: number;
+    y: number;
+  } | null>(null);
+  const hoverTimeoutRef = React.useRef<any>(null);
+  const mouseCoordsRef = React.useRef({ x: 0, y: 0 });
   const [lastFilesList, setLastFilesList] = useState<string[]>([]);
   const [forcePush, setForcePush] = useState(false);
 
@@ -236,6 +244,26 @@ function App() {
     setSelectedIndex(idx);
     setIsCompareMode(false);
     vscode.postMessage({ type: 'getDiff', hash });
+  };
+
+  const handleRowMouseEnter = (e: React.MouseEvent, commit: any) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    mouseCoordsRef.current = { x: e.clientX, y: e.clientY };
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredCommit({ commit, x: mouseCoordsRef.current.x, y: mouseCoordsRef.current.y });
+    }, 450);
+  };
+
+  const handleRowMouseMove = (e: React.MouseEvent) => {
+    mouseCoordsRef.current = { x: e.clientX, y: e.clientY };
+    if (hoveredCommit) {
+      setHoveredCommit(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null);
+    }
+  };
+
+  const handleRowMouseLeave = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setHoveredCommit(null);
   };
 
   const handleFilter = (branch: string) => {
@@ -830,9 +858,12 @@ function App() {
                         className={selectedIndex === idx ? 'selected' : ''}
                         onClick={() => handleSelectCommit(idx, commit.hash)}
                         onContextMenu={(e) => openContextMenu(e, { kind: 'commit', commit, index: idx })}
+                        onMouseEnter={(e) => handleRowMouseEnter(e, commit)}
+                        onMouseMove={handleRowMouseMove}
+                        onMouseLeave={handleRowMouseLeave}
                       >
                         <td style={{ width: `${graphWidth}px` }}></td>
-                        <td title={commit.message}>
+                        <td>
                           <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
                             <div style={{ display: 'flex', flexWrap: 'nowrap', marginRight: '8px', flexShrink: 0 }}>
                               {renderRefs(commit.refs)}
@@ -1041,6 +1072,13 @@ function App() {
           items={menuState.kind === 'commit' ? getCommitMenuItems() : menuState.kind === 'branch' ? getBranchMenuItems() : getTagMenuItems()}
           onAction={handleMenuAction}
           onClose={handleCloseMenu}
+        />
+      )}
+      {hoveredCommit && (
+        <CommitHoverPopup
+          commit={hoveredCommit.commit}
+          x={hoveredCommit.x}
+          y={hoveredCommit.y}
         />
       )}
     </div>
