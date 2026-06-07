@@ -398,6 +398,43 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           await this._gitService.cherryPick(data.hash);
           this.refresh();
           break;
+        case 'cherryPickMultiple':
+          await this._gitService.cherryPickMultiple(data.hashes);
+          this.refresh();
+          break;
+        case 'squashCommits': {
+          const validation = await this._gitService.validateSquash(data.hashes);
+          if (!validation.valid) {
+            vscode.window.showErrorMessage(`Cannot squash: ${validation.reason}`);
+            break;
+          }
+          
+          const rawMessages = await this._gitService.getCommitMessages(data.hashes);
+          const defaultMessage = rawMessages.filter(Boolean).join('\n\n');
+          
+          const commitMessage = await vscode.window.showInputBox({
+            prompt: 'Enter commit message for the squashed commit',
+            value: defaultMessage,
+            placeHolder: 'Commit message',
+            ignoreFocusOut: true
+          });
+          
+          if (commitMessage === undefined) {
+            break;
+          }
+          
+          const finalMessage = commitMessage.trim();
+          if (!finalMessage) {
+            vscode.window.showErrorMessage('Commit message cannot be empty.');
+            break;
+          }
+          
+          const success = await this._gitService.squashCommits(data.hashes, finalMessage);
+          if (success) {
+            this.refresh();
+          }
+          break;
+        }
         case 'cherryPickWithWorktree': {
           const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
           const defaultPath = workspaceRoot ? path.join(path.dirname(workspaceRoot), `${path.basename(workspaceRoot)}-wt-cp-${data.hash.substring(0, 7)}`) : '';

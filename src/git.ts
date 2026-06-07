@@ -574,4 +574,161 @@ export class GitService {
       return null;
     }
   }
+
+  public async cherryPickMultiple(hashes: string[]) {
+    if (!this._git || hashes.length === 0) return;
+    try {
+      await this._git.raw(['cherry-pick', ...hashes]);
+      vscode.window.showInformationMessage(`Successfully cherry-picked ${hashes.length} commits.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`Cherry-pick failed: ${err}`);
+    }
+  }
+
+  public async validateSquash(hashes: string[]): Promise<{ valid: boolean; reason?: string }> {
+    if (!this._git || hashes.length <= 1) {
+      return { valid: false, reason: 'Please select at least 2 commits to squash.' };
+    }
+    try {
+      // 1. Get current branch to make sure we're not detached
+      const branchInfo = await this._git.branch(['-a']);
+      if (branchInfo.detached) {
+        return { valid: false, reason: 'Squashing is not supported in detached HEAD state.' };
+      }
+
+      // 2. Fetch the commits reachable from HEAD (up to 1000 commits is safe and fast)
+      const rawLog = await this._git.raw(['log', '--format=%H', '-n', '1000', 'HEAD']);
+      const branchHashes = rawLog.trim().split('\n').filter(Boolean);
+
+      // Find the index of each requested hash in the branch's history
+      const indices: number[] = [];
+      for (const hash of hashes) {
+        const index = branchHashes.findIndex(h => h === hash);
+        if (index === -1) {
+          return { valid: false, reason: `Commit ${hash.substring(0, 7)} is not in the history of the current branch.` };
+        }
+        indices.push(index);
+      }
+
+      // Sort indices ascending (meaning from youngest to oldest in history)
+      indices.sort((a, b) => a - b);
+
+      // Verify contiguity
+      for (let i = 1; i < indices.length; i++) {
+        if (indices[i] !== indices[i - 1] + 1) {
+          return { valid: false, reason: 'Selected commits must be contiguous in branch history.' };
+        }
+      }
+
+      return { valid: true };
+    } catch (err: any) {
+      return { valid: false, reason: `Validation failed: ${err.message || err}` };
+    }
+  }
+
+  public async squashCommits(hashes: string[], commitMessage: string): Promise<boolean> {
+    if (!this._git || hashes.length <= 1) return false;
+    
+    let originalBranch = '';
+    let originalHead = '';
+    
+    try {
+      const branchInfo = await this._git.branch();
+      originalBranch = branchInfo.current;
+      originalHead = (await this._git.revparse(['HEAD'])).trim();
+      
+      if (!originalBranch || branchInfo.detached) {
+        throw new Error('Not on a valid branch or branch is detached.');
+      }
+
+      // Find the index of each requested hash in the branch's history to sort them
+      const rawLog = await this._git.raw(['log', '--format=%H', '-n', '1000', 'HEAD']);
+      const branchHashes = rawLog.trim().split('\n').filter(Boolean);
+      
+      const sortedByHistory = hashes
+        .map(h => ({ hash: h, index: branchHashes.indexOf(h) }))
+        .filter(item => item.index !== -1)
+        .sort((a, b) => a.index - b.index); // youngest (smallest index) to oldest (largest index)
+      
+      if (sortedByHistory.length !== hashes.length) {
+        throw new Error('Some commits are not on the current branch.');
+      }
+
+      const youngest = sortedByHistory[0].hash;
+      const oldest = sortedByHistory[sortedByHistory.length - 1].hash;
+
+      // Get the parent of the oldest commit
+      let oldestParent = '';
+      try {
+        oldestParent = (await this._git.raw(['rev-parse', `${oldest}^`])).trim();
+      } catch (err) {
+        throw new Error(`Cannot find parent of oldest commit ${oldest.substring(0, 7)}. Squashing the root commit is not supported.`);
+      }
+
+      const isYoungestHead = youngest === originalHead;
+
+      if (isYoungestHead) {
+        console.log('Squashing Case A: Youngest is HEAD. Soft resetting to:', oldestParent);
+        await this._git.reset(['--soft', oldestParent]);
+        await this._git.commit(commitMessage);
+        vscode.window.showInformationMessage('Successfully squashed commits.');
+        return true;
+      } else {
+        console.log('Squashing Case B: Youngest is not HEAD. Creating temp branch at:', youngest);
+        const tempBranchName = `temp-squash-${Date.now()}`;
+        
+        await this._git.checkout(['-b', tempBranchName, youngest]);
+        await this._git.reset(['--soft', oldestParent]);
+        await this._git.commit(commitMessage);
+        
+        console.log(`Cherry-picking range: ${youngest}..${originalBranch}`);
+        try {
+          await this._git.raw(['cherry-pick', `${youngest}..${originalBranch}`]);
+        } catch (cpErr) {
+          await this._git.raw(['cherry-pick', '--abort']);
+          throw cpErr;
+        }
+        
+        await this._git.checkout(originalBranch);
+        await this._git.reset(['--hard', tempBranchName]);
+        await this._git.raw(['branch', '-D', tempBranchName]);
+        
+        vscode.window.showInformationMessage('Successfully squashed commits.');
+        return true;
+      }
+    } catch (err: any) {
+      console.error('Squash failed. Rolling back...', err);
+      if (originalBranch) {
+        try {
+          try {
+            await this._git.raw(['cherry-pick', '--abort']);
+          } catch (e) {
+            // ignore
+          }
+          await this._git.checkout(originalBranch);
+          if (originalHead) {
+            await this._git.reset(['--hard', originalHead]);
+          }
+        } catch (rollbackErr) {
+          console.error('Failed to rollback squash:', rollbackErr);
+        }
+      }
+      vscode.window.showErrorMessage(`Squash commits failed: ${err.message || err}`);
+      return false;
+    }
+  }
+
+  public async getCommitMessages(hashes: string[]): Promise<string[]> {
+    if (!this._git) return [];
+    const messages: string[] = [];
+    for (const hash of hashes) {
+      try {
+        const msg = await this._git.raw(['log', '-1', '--format=%B', hash]);
+        messages.push(msg.trim());
+      } catch {
+        messages.push('');
+      }
+    }
+    return messages;
+  }
 }

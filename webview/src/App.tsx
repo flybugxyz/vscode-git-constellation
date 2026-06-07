@@ -18,6 +18,8 @@ export type MenuState = CommitMenu | BranchMenu | TagMenu;
 function App() {
   const [gitData, setGitData] = useState<any>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [anchorIndex, setAnchorIndex] = useState<number>(-1);
   const [menuState, setMenuState] = useState<MenuState | null>(null);
   const [isCompareMode, setIsCompareMode] = useState(false);
   const [pinnedBranches, setPinnedBranches] = useState<Set<string>>(new Set());
@@ -91,9 +93,15 @@ function App() {
       const message = event.data;
       switch (message.type) {
         case 'update':
-          setGitData(message.payload);
-          if (message.payload.fileFilter !== undefined) {
-            setFileFilter(message.payload.fileFilter);
+          const payload = message.payload;
+          setGitData(payload);
+          if (payload.fileFilter !== undefined) {
+            setFileFilter(payload.fileFilter);
+          }
+          if (payload.log?.all) {
+            const logLen = payload.log.all.length;
+            setSelectedIndices(prev => prev.filter(i => i >= 0 && i < logLen));
+            setSelectedIndex(prev => (prev >= 0 && prev < logLen) ? prev : -1);
           }
           break;
         case 'files':
@@ -240,10 +248,71 @@ function App() {
     vscode.postMessage({ type: 'discardChanges', path });
   };
 
-  const handleSelectCommit = (idx: number, hash: string) => {
-    setSelectedIndex(idx);
-    setIsCompareMode(false);
-    vscode.postMessage({ type: 'getDiff', hash });
+  const handleSelectCommit = (idx: number, hash: string, e?: React.MouseEvent) => {
+    let newSelected: number[] = [];
+    let newAnchor = anchorIndex;
+
+    if (e && (e.ctrlKey || e.metaKey)) {
+      if (selectedIndices.includes(idx)) {
+        newSelected = selectedIndices.filter(i => i !== idx);
+      } else {
+        newSelected = [...selectedIndices, idx];
+      }
+      newAnchor = idx;
+    } else if (e && e.shiftKey && anchorIndex !== -1) {
+      const start = Math.min(anchorIndex, idx);
+      const end = Math.max(anchorIndex, idx);
+      newSelected = [];
+      for (let i = start; i <= end; i++) {
+        newSelected.push(i);
+      }
+    } else {
+      newSelected = [idx];
+      newAnchor = idx;
+    }
+
+    setSelectedIndices(newSelected);
+    setAnchorIndex(newAnchor);
+
+    if (newSelected.length > 0) {
+      setSelectedIndex(idx);
+      setIsCompareMode(false);
+      vscode.postMessage({ type: 'getDiff', hash });
+    } else {
+      setSelectedIndex(-1);
+      setSelectedCommitFiles(null);
+    }
+  };
+
+  const checkCanSquash = () => {
+    if (selectedIndices.length <= 1) return false;
+    const sorted = [...selectedIndices].sort((a, b) => a - b);
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] !== sorted[i - 1] + 1) {
+        return false;
+      }
+    }
+    if (searchQuery || fileFilter) {
+      return false;
+    }
+    return true;
+  };
+
+  const handleRowContextMenu = (e: React.MouseEvent, commit: any, idx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    let currentSelected = [...selectedIndices];
+    if (!selectedIndices.includes(idx)) {
+      currentSelected = [idx];
+      setSelectedIndices(currentSelected);
+      setAnchorIndex(idx);
+      setSelectedIndex(idx);
+      setIsCompareMode(false);
+      vscode.postMessage({ type: 'getDiff', hash: commit.hash });
+    }
+
+    openContextMenu(e, { kind: 'commit', commit, index: idx });
   };
 
   const handleRowMouseEnter = (e: React.MouseEvent, commit: any) => {
@@ -269,6 +338,8 @@ function App() {
   const handleFilter = (branch: string) => {
     setFilterBranch(branch);
     setSelectedIndex(-1);
+    setSelectedIndices([]);
+    setAnchorIndex(-1);
     setSelectedCommitFiles(null);
     vscode.postMessage({ type: 'setFilter', branch });
     setShowBranches(false);
@@ -283,6 +354,8 @@ function App() {
   const handleFilterAuthor = (author: string) => {
     setFilterAuthor(author);
     setSelectedIndex(-1);
+    setSelectedIndices([]);
+    setAnchorIndex(-1);
     setSelectedCommitFiles(null);
     vscode.postMessage({ type: 'setAuthorFilter', author });
     setAuthorPopupPos(null);
@@ -346,6 +419,7 @@ function App() {
       case 'createWorktree':
       case 'cherryPick':
       case 'cherryPickWithWorktree':
+      case 'squashCommits':
       case 'revertCommit':
       case 'viewDetails':
       case 'viewDiff': {
@@ -372,11 +446,23 @@ function App() {
         vscode.postMessage({ type: 'createWorktree', hash: commit.hash });
         break;
       case 'cherryPick':
-        vscode.postMessage({ type: 'cherryPick', hash: commit.hash });
+        if (selectedIndices.length > 1) {
+          const sortedIndices = [...selectedIndices].sort((a, b) => b - a); // oldest first
+          const hashes = sortedIndices.map(i => gitData.log.all[i].hash);
+          vscode.postMessage({ type: 'cherryPickMultiple', hashes });
+        } else {
+          vscode.postMessage({ type: 'cherryPick', hash: commit.hash });
+        }
         break;
       case 'cherryPickWithWorktree':
         vscode.postMessage({ type: 'cherryPickWithWorktree', hash: commit.hash });
         break;
+      case 'squashCommits': {
+        const sortedIndices = [...selectedIndices].sort((a, b) => b - a); // oldest first
+        const hashes = sortedIndices.map(i => gitData.log.all[i].hash);
+        vscode.postMessage({ type: 'squashCommits', hashes });
+        break;
+      }
       case 'revertCommit':
         vscode.postMessage({ type: 'revertCommit', hash: commit.hash });
         break;
@@ -473,31 +559,38 @@ function App() {
   };
 
   const getCommitMenuItems = (): MenuEntry[] => {
+    const isMulti = selectedIndices.length > 1;
+    const canSquash = checkCanSquash();
     return [
       {
         label: 'Copy', icon: 'copy',
         submenu: [
-          { label: 'Copy SHA', icon: 'copy', action: 'copySHA' },
-          { label: 'Copy Short SHA', icon: 'copy', action: 'copyShortSHA' },
-          { label: 'Copy Message', icon: 'copy', action: 'copyMessage' },
-          { label: 'Copy URL', icon: 'link', action: 'copyURL' }
+          { label: 'Copy SHA', icon: 'copy', action: 'copySHA', disabled: isMulti },
+          { label: 'Copy Short SHA', icon: 'copy', action: 'copyShortSHA', disabled: isMulti },
+          { label: 'Copy Message', icon: 'copy', action: 'copyMessage', disabled: isMulti },
+          { label: 'Copy URL', icon: 'link', action: 'copyURL', disabled: isMulti }
         ]
       },
       { type: 'separator' },
-      { label: 'Create Branch...', icon: 'git-branch', action: 'createBranchFrom' },
-      { label: 'Create Tag...', icon: 'tag', action: 'createTag' },
-      { label: 'Create Worktree...', icon: 'worktree', action: 'createWorktree' },
+      { label: 'Create Branch...', icon: 'git-branch', action: 'createBranchFrom', disabled: isMulti },
+      { label: 'Create Tag...', icon: 'tag', action: 'createTag', disabled: isMulti },
+      { label: 'Create Worktree...', icon: 'worktree', action: 'createWorktree', disabled: isMulti },
       { type: 'separator' },
-      { label: 'Cherry Pick', icon: 'git-merge', action: 'cherryPick' },
-      { label: 'Cherry Pick (with worktree)', icon: 'git-merge', action: 'cherryPickWithWorktree' },
-      { label: 'Revert Commit', icon: 'discard', action: 'revertCommit', danger: true },
-      { label: 'Rebase Current Branch onto This', icon: 'sync', action: 'rebaseRef' },
-      { label: 'Merge into Current Branch...', icon: 'merge', action: 'mergeRef' },
+      { 
+        label: isMulti ? `Cherry Pick ${selectedIndices.length} Commits` : 'Cherry Pick', 
+        icon: 'git-merge', 
+        action: 'cherryPick' 
+      },
+      { label: 'Cherry Pick (with worktree)', icon: 'git-merge', action: 'cherryPickWithWorktree', disabled: isMulti },
+      { label: 'Squash Commits...', icon: 'arrow-both', action: 'squashCommits', disabled: !canSquash },
+      { label: 'Revert Commit', icon: 'discard', action: 'revertCommit', danger: true, disabled: isMulti },
+      { label: 'Rebase Current Branch onto This', icon: 'sync', action: 'rebaseRef', disabled: isMulti },
+      { label: 'Merge into Current Branch...', icon: 'merge', action: 'mergeRef', disabled: isMulti },
       { type: 'separator' },
-      { label: 'Compare with Current Branch', icon: 'git-compare', action: 'compareWithCurrent' },
-      { label: 'View Details', icon: 'inspect', action: 'viewDetails' },
-      { label: 'Open in Browser', icon: 'link-external', action: 'openInBrowser' },
-      { label: 'View Diff', icon: 'diff', action: 'viewDiff' }
+      { label: 'Compare with Current Branch', icon: 'git-compare', action: 'compareWithCurrent', disabled: isMulti },
+      { label: 'View Details', icon: 'inspect', action: 'viewDetails', disabled: isMulti },
+      { label: 'Open in Browser', icon: 'link-external', action: 'openInBrowser', disabled: isMulti },
+      { label: 'View Diff', icon: 'diff', action: 'viewDiff', disabled: isMulti }
     ];
   };
 
@@ -601,7 +694,7 @@ function App() {
     <div className="container">
       <div className="tabs">
         <div className={`tab ${activeTab === 'log' ? 'active' : ''}`} onClick={() => setActiveTab('log')}>Log</div>
-        <div className={`tab ${activeTab === 'local' ? 'active' : ''}`} onClick={() => { setActiveTab('local'); setSelectedIndex(-1); setSelectedCommitFiles(null); }}>
+        <div className={`tab ${activeTab === 'local' ? 'active' : ''}`} onClick={() => { setActiveTab('local'); setSelectedIndex(-1); setSelectedIndices([]); setAnchorIndex(-1); setSelectedCommitFiles(null); }}>
           Local Changes {gitData?.status?.files && gitData.status.files.length > 0 && `(${gitData.status.files.length})`}
         </div>
       </div>
@@ -685,10 +778,14 @@ function App() {
                   </button>
                   <button 
                     className="toolbar-button" 
-                    title="Cherry-pick selected commit"
-                    disabled={selectedIndex < 0 || !selectedCommit}
+                    title={selectedIndices.length > 1 ? `Cherry-pick ${selectedIndices.length} selected commits` : "Cherry-pick selected commit"}
+                    disabled={selectedIndices.length === 0}
                     onClick={() => {
-                      if (selectedCommit) {
+                      if (selectedIndices.length > 1) {
+                        const sortedIndices = [...selectedIndices].sort((a, b) => b - a); // oldest first
+                        const hashes = sortedIndices.map(i => gitData.log.all[i].hash);
+                        vscode.postMessage({ type: 'cherryPickMultiple', hashes });
+                      } else if (selectedCommit) {
                         vscode.postMessage({ type: 'cherryPick', hash: selectedCommit.hash });
                       }
                     }}
@@ -855,9 +952,9 @@ function App() {
                     {gitData?.log?.all.map((commit: any, idx: number) => (
                       <tr 
                         key={commit.hash} 
-                        className={selectedIndex === idx ? 'selected' : ''}
-                        onClick={() => handleSelectCommit(idx, commit.hash)}
-                        onContextMenu={(e) => openContextMenu(e, { kind: 'commit', commit, index: idx })}
+                        className={selectedIndices.includes(idx) ? 'selected' : ''}
+                        onClick={(e) => handleSelectCommit(idx, commit.hash, e)}
+                        onContextMenu={(e) => handleRowContextMenu(e, commit, idx)}
                         onMouseEnter={(e) => handleRowMouseEnter(e, commit)}
                         onMouseMove={handleRowMouseMove}
                         onMouseLeave={handleRowMouseLeave}
@@ -897,6 +994,8 @@ function App() {
                     title="Close Details"
                     onClick={() => {
                       setSelectedIndex(-1);
+                      setSelectedIndices([]);
+                      setAnchorIndex(-1);
                       setSelectedCommitFiles(null);
                       setIsCompareMode(false);
                     }}

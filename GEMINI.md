@@ -46,7 +46,7 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 ### 5. Context Menus & Git Operations
 - **Trigger**: Right-clicking a commit row, branch (dropdown list / pills), or tag pill triggers custom context menus positioned to respect viewport boundaries.
 - **Implementation**: Handled by a unified `<ContextMenu />` component in `ContextMenu.tsx`. It provides standard styling, keyboard navigation, submenus (e.g. for Copying), danger states, and dynamic enabling/disabling of options.
-- **Commit Menu**: Copy SHA/short SHA/message/URL, create branch/tag/worktree, cherry-pick, revert, rebase, merge, compare, inspect details, open browser, view diff.
+- **Commit Menu**: Copy SHA/short SHA/message/URL, create branch/tag/worktree, cherry-pick (supports multiple commits), squash commits (combines selected contiguous commits on the current branch with same-branch validation), revert, rebase, merge, compare, inspect details, open browser, view diff.
 - **Branch Menu**: Checkout, new branch, merge, rebase, pull, push, push to remote, rename, delete (local/remote), compare, pin/unpin, open in browser, set upstream. Pinned branches are displayed at the very top of the branch filter popup.
 - **Tag Menu**: View tag details (registers custom content provider `git-constellation-tag` scheme), create branch, compare, delete (local/remote), copy tag name, open in browser.
 - **Compare Mode**: Diff status between branches/tags or HEAD vs commit. Renders file differences list in the side pane with a banner to exit.
@@ -55,6 +55,7 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 
 ### 6. Commit List Table
 - **Layout**: Uses `table-layout: fixed` for stable column dimensions.
+- **Selection**: Supports multiple selection using Ctrl+click (toggle selection) and Shift+click (range selection) with active selection highlighting (`tr.selected`). Right-clicking a row selects it if it isn't already part of the current selection.
 - **Resizable Columns**: Enables manual stretching of the "Description", "Author", and "Date" columns via mouse drag handlers on header borders. Final column widths are saved and persisted via `localStorage`.
 - **Graph Column**: Exempt from manual resizing; width is automatically controlled by `GitGraph`.
 
