@@ -279,7 +279,7 @@ describe('GitService URL Parsing and Git Commands', () => {
   describe('worktree operations', () => {
     it('should get worktrees and parse porcelain output correctly', async () => {
       const mockPorcelain = `worktree /home/user/project
-commit a0f03948e9c8b7a6e5d4c3b2a190
+HEAD a0f03948e9c8b7a6e5d4c3b2a190
 branch refs/heads/main
 
 worktree /home/user/project-wt-1
@@ -287,7 +287,7 @@ commit abcde12345
 detached
 
 worktree /home/user/project-wt-2
-commit 1234567890
+HEAD 1234567890
 branch refs/heads/feature-1`;
 
       mockSimpleGitInstance.raw.mockResolvedValue(mockPorcelain);

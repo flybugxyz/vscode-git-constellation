@@ -1103,6 +1103,8 @@ export class GitService {
         for (const line of lines) {
           if (line.startsWith('worktree ')) {
             wtPath = line.substring(9).trim();
+          } else if (line.startsWith('HEAD ')) {
+            commit = line.substring(5).trim();
           } else if (line.startsWith('commit ')) {
             commit = line.substring(7).trim();
           } else if (line.startsWith('branch ')) {
