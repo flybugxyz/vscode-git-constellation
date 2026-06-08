@@ -119,6 +119,9 @@ function dispatchCommitAction(
       cb.postMessage({ type: 'squashCommits', hashes });
       break;
     }
+    case 'rewordCommit':
+      cb.postMessage({ type: 'rewordCommit', hash: commit.hash });
+      break;
     case 'revertCommit':
       cb.postMessage({ type: 'revertCommit', hash: commit.hash });
       break;
@@ -225,6 +228,7 @@ export function getCommitMenuItems(
     },
     { label: 'Cherry Pick (with worktree)', icon: 'git-merge', action: 'cherryPickWithWorktree', disabled: isMulti },
     { label: 'Squash Commits...', icon: 'arrow-both', action: 'squashCommits', disabled: !canSquash },
+    { label: 'Edit Commit Message...', icon: 'edit', action: 'rewordCommit', disabled: isMulti },
     { label: 'Revert Commit', icon: 'discard', action: 'revertCommit', danger: true, disabled: isMulti },
     { label: 'Rebase Current Branch onto This', icon: 'sync', action: 'rebaseRef', disabled: isMulti },
     { label: 'Merge into Current Branch...', icon: 'merge', action: 'mergeRef', disabled: isMulti },

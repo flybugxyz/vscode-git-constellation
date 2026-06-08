@@ -130,6 +130,15 @@ describe('dispatchMenuAction', () => {
       });
     });
 
+    it('rewordCommit posts correct message', () => {
+      const cb = createCallbacks();
+      const menu: MenuState = { kind: 'commit', commit: sampleCommit, index: 0, x: 0, y: 0 };
+
+      dispatchMenuAction(menu, 'rewordCommit', cb);
+
+      expect(cb.postMessage).toHaveBeenCalledWith({ type: 'rewordCommit', hash: 'abc123def456' });
+    });
+
     it('viewDetails sets UI state and fetches diff', () => {
       const cb = createCallbacks();
       const menu: MenuState = { kind: 'commit', commit: sampleCommit, index: 5, x: 0, y: 0 };
@@ -278,6 +287,24 @@ describe('getCommitMenuItems', () => {
     const copyItem = (items.filter((i): i is MenuItem => 'label' in i)).find(i => i.label === 'Copy');
 
     expect(copyItem?.submenu).toHaveLength(4);
+  });
+
+  it('includes Edit Commit Message... action', () => {
+    const items = getCommitMenuItems(1, false);
+    const menuItems = items.filter((i): i is MenuItem => 'label' in i);
+    const rewordItem = menuItems.find(i => i.action === 'rewordCommit');
+
+    expect(rewordItem).toBeDefined();
+    expect(rewordItem?.label).toBe('Edit Commit Message...');
+    expect(rewordItem?.disabled).toBe(false);
+  });
+
+  it('disables Edit Commit Message... action for multi-select', () => {
+    const items = getCommitMenuItems(3, false);
+    const menuItems = items.filter((i): i is MenuItem => 'label' in i);
+    const rewordItem = menuItems.find(i => i.action === 'rewordCommit');
+
+    expect(rewordItem?.disabled).toBe(true);
   });
 });
 

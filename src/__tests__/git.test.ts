@@ -26,7 +26,12 @@ const mockSimpleGitInstance = {
   remote: vi.fn(),
   status: vi.fn(),
   diff: vi.fn(),
-  raw: vi.fn()
+  raw: vi.fn(),
+  branch: vi.fn(),
+  revparse: vi.fn(),
+  checkout: vi.fn(),
+  reset: vi.fn(),
+  clean: vi.fn()
 };
 
 vi.mock('simple-git', () => {
@@ -166,6 +171,84 @@ describe('GitService URL Parsing and Git Commands', () => {
       expect(diff).toContain('tracked.txt');
       expect(diff).toContain('diff --git a/untracked.txt b/untracked.txt');
       expect(diff).toContain('+hello world');
+    });
+  });
+
+  describe('rewordCommit', () => {
+    it('should reject when working tree is dirty', async () => {
+      mockSimpleGitInstance.status.mockResolvedValue({
+        files: [{ index: 'M', working_dir: ' ' }]
+      } as any);
+
+      const success = await gitService.rewordCommit('abc123de', 'New message');
+      expect(success).toBe(false);
+    });
+
+    it('should reword HEAD commit successfully', async () => {
+      mockSimpleGitInstance.status.mockResolvedValue({ files: [] } as any);
+      mockSimpleGitInstance.branch.mockResolvedValue({ current: 'main', detached: false } as any);
+      mockSimpleGitInstance.revparse.mockResolvedValue('abc123de');
+
+      mockSimpleGitInstance.raw.mockImplementation(async (args: string[]) => {
+        if (args[0] === 'log') {
+          return 'abc123de\nparent123\n';
+        }
+        if (args[0] === 'rev-parse' && args[1] === 'abc123de^') {
+          return 'parent123';
+        }
+        return '';
+      });
+
+      const success = await gitService.rewordCommit('abc123de', 'New message');
+      expect(success).toBe(true);
+      expect(mockSimpleGitInstance.raw).toHaveBeenCalledWith(['commit', '--amend', '-m', 'New message']);
+    });
+
+    it('should reword an older commit and cherry-pick subsequent commits', async () => {
+      mockSimpleGitInstance.status.mockResolvedValue({ files: [] } as any);
+      mockSimpleGitInstance.branch.mockResolvedValue({ current: 'main', detached: false } as any);
+      mockSimpleGitInstance.revparse.mockResolvedValue('deadbeef');
+
+      mockSimpleGitInstance.raw.mockImplementation(async (args: string[]) => {
+        if (args[0] === 'log') {
+          return 'deadbeef\nface1234\ncafe5678\n';
+        }
+        if (args[0] === 'rev-parse' && args[1] === 'face1234^') {
+          return 'cafe5678';
+        }
+        return '';
+      });
+
+      const success = await gitService.rewordCommit('face1234', 'New message');
+      expect(success).toBe(true);
+      expect(mockSimpleGitInstance.checkout).toHaveBeenCalledWith(expect.arrayContaining(['-b', expect.any(String), 'face1234']));
+      expect(mockSimpleGitInstance.raw).toHaveBeenCalledWith(['commit', '--amend', '-m', 'New message']);
+      expect(mockSimpleGitInstance.raw).toHaveBeenCalledWith(['cherry-pick', 'face1234..main']);
+    });
+
+    it('should rollback on cherry-pick failure', async () => {
+      mockSimpleGitInstance.status.mockResolvedValue({ files: [] } as any);
+      mockSimpleGitInstance.branch.mockResolvedValue({ current: 'main', detached: false } as any);
+      mockSimpleGitInstance.revparse.mockResolvedValue('deadbeef');
+
+      mockSimpleGitInstance.raw.mockImplementation(async (args: string[]) => {
+        if (args[0] === 'log') {
+          return 'deadbeef\nface1234\ncafe5678\n';
+        }
+        if (args[0] === 'rev-parse' && args[1] === 'face1234^') {
+          return 'cafe5678';
+        }
+        if (args[0] === 'cherry-pick' && args[1] === 'face1234..main') {
+          throw new Error('Cherry-pick conflict');
+        }
+        return '';
+      });
+
+      const success = await gitService.rewordCommit('face1234', 'New message');
+      expect(success).toBe(false);
+      expect(mockSimpleGitInstance.raw).toHaveBeenCalledWith(['cherry-pick', '--abort']);
+      expect(mockSimpleGitInstance.checkout).toHaveBeenCalledWith('main');
+      expect(mockSimpleGitInstance.reset).toHaveBeenCalledWith(['--hard', 'deadbeef']);
     });
   });
 });

@@ -445,6 +445,37 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           }
           break;
         }
+        case 'rewordCommit': {
+          const rawMessages = await this._gitService.getCommitMessages([data.hash]);
+          const currentMessage = rawMessages[0] || '';
+          
+          const commitMessage = await vscode.window.showInputBox({
+            prompt: `Edit commit message for ${data.hash.substring(0, 7)}`,
+            value: currentMessage,
+            placeHolder: 'Commit message',
+            ignoreFocusOut: true
+          });
+          
+          if (commitMessage === undefined) {
+            break;
+          }
+          
+          const finalMessage = commitMessage.trim();
+          if (!finalMessage) {
+            vscode.window.showErrorMessage('Commit message cannot be empty.');
+            break;
+          }
+          
+          if (finalMessage === currentMessage.trim()) {
+            break;
+          }
+          
+          const success = await this._gitService.rewordCommit(data.hash, finalMessage);
+          if (success) {
+            this.refresh();
+          }
+          break;
+        }
         case 'cherryPickWithWorktree': {
           const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
           const defaultPath = workspaceRoot ? path.join(path.dirname(workspaceRoot), `${path.basename(workspaceRoot)}-wt-cp-${data.hash.substring(0, 7)}`) : '';

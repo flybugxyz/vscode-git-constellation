@@ -46,7 +46,7 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 ### 5. Context Menus & Git Operations
 - **Trigger**: Right-clicking a commit row, branch (dropdown list / pills), or tag pill triggers custom context menus positioned to respect viewport boundaries.
 - **Implementation**: Handled by a unified `<ContextMenu />` component in `ContextMenu.tsx`. It provides standard styling, keyboard navigation, submenus (e.g. for Copying), danger states, and dynamic enabling/disabling of options.
-- **Commit Menu**: Copy SHA/short SHA/message/URL, create branch/tag/worktree, cherry-pick (supports multiple commits), squash commits (combines selected contiguous commits on the current branch with same-branch validation), revert, rebase, merge, compare, inspect details, open browser, view diff.
+- **Commit Menu**: Copy SHA/short SHA/message/URL, create branch/tag/worktree, cherry-pick (supports multiple commits), squash commits (combines selected contiguous commits on the current branch with same-branch validation), edit commit message (amends HEAD or rewrites history using temp branch and cherry-picks for older commits), revert, rebase, merge, compare, inspect details, open browser, view diff.
 - **Branch Menu**: Checkout, new branch, merge, rebase, pull, push, push to remote, rename, delete (local/remote), compare, pin/unpin, open in browser, set upstream. Pinned branches are displayed at the very top of the branch filter popup. The branch filter popup also allows filtering the commit log by local branches, remote branches, and tags.
 - **Tag Menu**: View tag details (registers custom content provider `git-constellation-tag` scheme), create branch, compare, delete (local/remote), copy tag name, open in browser.
 - **Compare Mode**: Diff status between branches/tags or HEAD vs commit. Renders file differences list in the side pane with a banner to exit.
@@ -96,5 +96,5 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - `webview/src/contextMenuActions.ts`: Pure logic for context menu item builders and action dispatch.
 - `webview/src/hooks/useResizable.ts`: Custom hook for column/commit-box drag-resize with localStorage persistence.
 - `webview/src/hooks/useCommitSelection.ts`: Custom hook for commit multi-select/range-select/squash logic.
-- `webview/src/__tests__/contextMenuActions.test.ts`: Unit tests for context menu actions (34 tests).
+- `webview/src/__tests__/contextMenuActions.test.ts`: Unit tests for context menu actions (37 tests).
 - `webview/src/styles.css`: Global styles and theme overrides.

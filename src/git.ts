@@ -838,6 +838,112 @@ export class GitService {
     }
   }
 
+  public async isWorkingTreeClean(): Promise<boolean> {
+    if (!this._git) return false;
+    try {
+      const status = await this._git.status();
+      const hasChanges = status.files.some(f => {
+        // '?' in both index and working_dir is untracked
+        const isUntracked = f.index === '?' && f.working_dir === '?';
+        return !isUntracked;
+      });
+      return !hasChanges;
+    } catch (err) {
+      console.error('Error checking git status cleanliness:', err);
+      return false;
+    }
+  }
+
+  public async rewordCommit(hash: string, newMessage: string): Promise<boolean> {
+    if (!this._git) return false;
+    validateHash(hash);
+
+    let originalBranch = '';
+    let originalHead = '';
+
+    try {
+      // 1. Verify working tree is clean (excluding untracked files)
+      const clean = await this.isWorkingTreeClean();
+      if (!clean) {
+        throw new Error('Your working tree has unstaged or staged changes. Please commit or stash them first.');
+      }
+
+      // 2. Get current branch details
+      const branchInfo = await this._git.branch();
+      originalBranch = branchInfo.current;
+      originalHead = (await this._git.revparse(['HEAD'])).trim();
+
+      if (!originalBranch || branchInfo.detached) {
+        throw new Error('Not on a valid branch or branch is detached.');
+      }
+
+      // 3. Verify target commit is in current branch history
+      const rawLog = await this._git.raw(['log', '--format=%H', '-n', '1000', 'HEAD']);
+      const branchHashes = rawLog.trim().split('\n').filter(Boolean);
+      const commitIndex = branchHashes.indexOf(hash);
+      if (commitIndex === -1) {
+        throw new Error(`Commit ${hash.substring(0, 7)} is not in the history of the current branch.`);
+      }
+
+      // 4. Get parent of target commit
+      let parent = '';
+      try {
+        parent = (await this._git.raw(['rev-parse', `${hash}^`])).trim();
+      } catch (err) {
+        throw new Error(`Cannot find parent of commit ${hash.substring(0, 7)}. Rewording the root commit is not supported.`);
+      }
+
+      const isHead = hash === originalHead;
+
+      if (isHead) {
+        console.log('Rewording HEAD commit...');
+        await this._git.raw(['commit', '--amend', '-m', newMessage]);
+        vscode.window.showInformationMessage('Successfully updated commit message.');
+        return true;
+      } else {
+        console.log('Rewording older commit. Creating temp branch at:', hash);
+        const tempBranchName = `temp-reword-${Date.now()}`;
+        
+        await this._git.checkout(['-b', tempBranchName, hash]);
+        await this._git.raw(['commit', '--amend', '-m', newMessage]);
+        
+        console.log(`Cherry-picking range: ${hash}..${originalBranch}`);
+        try {
+          await this._git.raw(['cherry-pick', `${hash}..${originalBranch}`]);
+        } catch (cpErr) {
+          await this._git.raw(['cherry-pick', '--abort']);
+          throw cpErr;
+        }
+        
+        await this._git.checkout(originalBranch);
+        await this._git.reset(['--hard', tempBranchName]);
+        await this._git.raw(['branch', '-D', tempBranchName]);
+        
+        vscode.window.showInformationMessage('Successfully updated commit message.');
+        return true;
+      }
+    } catch (err: any) {
+      console.error('Reword failed. Rolling back...', err);
+      if (originalBranch) {
+        try {
+          try {
+            await this._git.raw(['cherry-pick', '--abort']);
+          } catch (e) {
+            // ignore
+          }
+          await this._git.checkout(originalBranch);
+          if (originalHead) {
+            await this._git.reset(['--hard', originalHead]);
+          }
+        } catch (rollbackErr) {
+          console.error('Failed to rollback reword:', rollbackErr);
+        }
+      }
+      vscode.window.showErrorMessage(`Edit commit message failed: ${err.message || err}`);
+      return false;
+    }
+  }
+
   public async getCommitMessages(hashes: string[]): Promise<string[]> {
     if (!this._git) return [];
     hashes.forEach(validateHash);
@@ -853,3 +959,4 @@ export class GitService {
     return messages;
   }
 }
+
