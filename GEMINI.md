@@ -49,6 +49,7 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - **Commit Menu**: Copy SHA/short SHA/message/URL, create branch/tag/worktree, cherry-pick (supports multiple commits), squash commits (combines selected contiguous commits on the current branch with same-branch validation), edit commit message (amends HEAD or rewrites history using temp branch and cherry-picks for older commits), revert, rebase, merge, compare, inspect details, open browser, view diff.
 - **Branch Menu**: Checkout, new branch, merge, rebase, pull, push, push to remote, rename, delete (local/remote), compare, pin/unpin, open in browser, set upstream. Pinned branches are displayed at the very top of the branch filter popup. The branch filter popup also allows filtering the commit log by local branches, remote branches, and tags.
 - **Tag Menu**: View tag details (registers custom content provider `git-constellation-tag` scheme), create branch, compare, delete (local/remote), copy tag name, open in browser.
+- **Stash Menu**: Apply stash, pop stash, drop stash, copy message, copy hash.
 - **Compare Mode**: Diff status between branches/tags or HEAD vs commit. Renders file differences list in the side pane with a banner to exit.
 - **View Diff**: Registers a custom text content provider `git-constellation-diff` scheme returning full git diffs.
 - **VS Code Explorer Context Menu**: Right-clicking a file in the VS Code file explorer context menu displays a "View File History (GitConstellation)" option, which automatically focuses the extension panel and filters the commit list to show the file's git history.
@@ -63,6 +64,12 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - **Integration**: OpenAI-compatible API configured via `git-constellation.openai.apiUrl`, `git-constellation.openai.apiKey`, `git-constellation.openai.model`, and `git-constellation.openai.prompt`.
 - **Logic**: Reads diff from selected checked files, limits length, and sends to the configured API. If no API key is set, it prompts the user to open settings.
 - **Test Command**: `git-constellation.testOpenAISettings` is available via settings page or command palette to verify connection.
+
+### 8. Stash Management
+- **Integration**: Access via "Stashes" tab in main UI. Lists stashes fetched via `git stash list`.
+- **Create Stash**: Form to stash local changes with options to Keep Staged Changes (`--keep-index`) and Include Untracked Files (`--include-untracked`). Supports generating a concise stash description using the configured OpenAI integration.
+- **Details Pane**: Reuses the Commit Details side pane to view files modified in a selected stash. Clicking a file compares the stashed file's changes against the parent commit it was stashed on.
+- **Operations**: Context menus to Apply, Pop, or Drop a stash. Offers a toolbar action to clear all stashes with VS Code confirmation prompt validation.
 
 ## Maintenance Guidelines
 - **Building**: Always run `npm run compile` to build both Webview (Vite) and Extension (Webpack).
@@ -84,17 +91,18 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - `src/git.ts`: Git abstraction layer with input validation safeguards.
 - `src/__tests__/git.test.ts`: Unit test suite verifying GitService operations.
 - `webview/index.html`: Webview entry.
-- `webview/src/App.tsx`: Main UI orchestration (commit table, toolbar, branch popup, author popup).
-- `webview/src/types.ts`: Shared TypeScript interface definitions for domain objects.
+- `webview/src/App.tsx`: Main UI orchestration (commit table, toolbar, branch popup, author popup, stash tab).
+- `webview/src/types.ts`: Shared TypeScript interface definitions for domain objects (Commit, GitStatus, Stash).
 - `webview/src/utils.ts`: Shared UI utility helpers.
 - `webview/src/GitGraph.tsx`: Commit graph rendering.
 - `webview/src/FileTree.tsx`: Modified files tree view.
 - `webview/src/ContextMenu.tsx`: Unified context menu component with keyboard navigation.
-- `webview/src/CommitDetailsSidePane.tsx`: Commit details side pane (changed files + commit metadata).
+- `webview/src/CommitDetailsSidePane.tsx`: Commit details side pane (changed files + commit/stash metadata).
 - `webview/src/CommitHoverPopup.tsx`: Hover popup showing commit details on mouse hover.
 - `webview/src/LocalChangesPanel.tsx`: Local changes panel (file tree + commit box + AI generate).
-- `webview/src/contextMenuActions.ts`: Pure logic for context menu item builders and action dispatch.
+- `webview/src/contextMenuActions.ts`: Pure logic for context menu item builders (commit, branch, tag, stash) and action dispatch.
 - `webview/src/hooks/useResizable.ts`: Custom hook for column/commit-box drag-resize with localStorage persistence.
 - `webview/src/hooks/useCommitSelection.ts`: Custom hook for commit multi-select/range-select/squash logic.
-- `webview/src/__tests__/contextMenuActions.test.ts`: Unit tests for context menu actions (37 tests).
-- `webview/src/styles.css`: Global styles and theme overrides.
+- `webview/src/__tests__/contextMenuActions.test.ts`: Unit tests for context menu actions (45 tests).
+- `webview/src/styles.css`: Global styles, theme overrides, and stash panel layouts.
+
