@@ -910,7 +910,7 @@ function App() {
                                 onClick={() => vscode.postMessage({ type: 'openWorktree', path: wt.path })}
                                 style={{ padding: '2px', background: 'transparent', border: 'none', display: 'inline-flex' }}
                               >
-                                <span className="codicon codicon-new-window" style={{ fontSize: '14px' }}></span>
+                                <span className="codicon codicon-open-in-window" style={{ fontSize: '14px' }}></span>
                               </button>
                               {!wt.isMain && (
                                 <button
