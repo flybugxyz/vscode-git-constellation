@@ -391,6 +391,13 @@ function App() {
                 <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <button 
                     className="toolbar-button" 
+                    title="Refresh / Fetch Remote"
+                    onClick={() => vscode.postMessage({ type: 'fetch' })}
+                  >
+                    <span className="codicon codicon-refresh"></span>
+                  </button>
+                  <button 
+                    className="toolbar-button" 
                     title="Pull"
                     onClick={() => vscode.postMessage({ type: 'pull' })}
                   >

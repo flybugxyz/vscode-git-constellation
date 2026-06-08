@@ -194,6 +194,18 @@ export class GitService {
     }
   }
 
+  public async fetch() {
+    if (!this._git) return false;
+    try {
+      await this._git.fetch();
+      vscode.window.showInformationMessage('Fetch succeeded.');
+      return true;
+    } catch (err) {
+      vscode.window.showErrorMessage(`Fetch failed: ${err}`);
+      return false;
+    }
+  }
+
   public async discardChanges(filePath: string) {
     if (!this._git) return false;
     validateFilePath(filePath);

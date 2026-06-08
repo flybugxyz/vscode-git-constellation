@@ -31,7 +31,8 @@ const mockSimpleGitInstance = {
   revparse: vi.fn(),
   checkout: vi.fn(),
   reset: vi.fn(),
-  clean: vi.fn()
+  clean: vi.fn(),
+  fetch: vi.fn()
 };
 
 vi.mock('simple-git', () => {
@@ -249,6 +250,22 @@ describe('GitService URL Parsing and Git Commands', () => {
       expect(mockSimpleGitInstance.raw).toHaveBeenCalledWith(['cherry-pick', '--abort']);
       expect(mockSimpleGitInstance.checkout).toHaveBeenCalledWith('main');
       expect(mockSimpleGitInstance.reset).toHaveBeenCalledWith(['--hard', 'deadbeef']);
+    });
+  });
+
+  describe('fetch', () => {
+    it('should call fetch on simple-git and return true on success', async () => {
+      mockSimpleGitInstance.fetch.mockResolvedValue({} as any);
+      const success = await gitService.fetch();
+      expect(mockSimpleGitInstance.fetch).toHaveBeenCalled();
+      expect(success).toBe(true);
+    });
+
+    it('should return false on fetch error', async () => {
+      mockSimpleGitInstance.fetch.mockRejectedValue(new Error('Fetch failed'));
+      const success = await gitService.fetch();
+      expect(mockSimpleGitInstance.fetch).toHaveBeenCalled();
+      expect(success).toBe(false);
     });
   });
 });

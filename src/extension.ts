@@ -216,6 +216,16 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           await this._gitService.pull();
           this.refresh();
           break;
+        case 'fetch':
+          await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Fetching remote changes...",
+            cancellable: false
+          }, async () => {
+            await this._gitService.fetch();
+          });
+          this.refresh();
+          break;
         case 'push':
           await this._gitService.push(false);
           this.refresh();
