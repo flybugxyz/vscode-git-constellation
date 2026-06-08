@@ -2,6 +2,24 @@
 
 All notable changes to the **GitConstellation** extension will be documented in this file.
 
+## [1.0.1] - 2026-06-08
+
+### Added
+- **Stash Management**: Added a dedicated "Stashes" tab to list and manage git stashes. Supports applying, popping, and dropping stashes, viewing stashed files, and generating AI descriptions for new stashes.
+- **Worktree Management**: Added a dedicated "Worktrees" tab to view all git worktrees with options to open them in a new window, remove them, or prune stale administrative records.
+- **File History View**: Added a VS Code Explorer context menu action to view a file's history, rendering a simplified linear timeline git graph filtered by the selected file.
+- **Multi-Selection & Batch Operations**: Enabled Ctrl+click / Shift+click multi-selection on the commit list table. Added support for batch cherry-picking and squashing contiguous commits on the current branch.
+- **Edit Commit Messages**: Support amending HEAD or rewriting history for older commits to edit commit messages directly from the context menu.
+- **Tag & Remote Filtering**: Enhanced the branch dropdown to support filtering the commit list by tags, local/remote branches, and pinned branches.
+- **Commit Detail Hover Popup**: Custom popup shows detailed commit metadata, refs, and the message when hovering over rows in the log.
+- **Manual Sync**: Refresh button in the top-right toolbar to manually fetch remote changes and reload the view.
+- **Testing Infrastructure**: Set up a robust Vitest testing environment with mocks for VS Code and simple-git.
+
+### Fixed
+- Fixed browser text selection being triggered when Shift+clicking rows in the commit table.
+- Fixed worktree "open in new window" icon rendering.
+- Fixed parsing of HEAD prefix from `git worktree list --porcelain`.
+
 ## [1.0.0] - 2026-06-07
 
 ### Added
