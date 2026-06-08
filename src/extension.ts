@@ -721,6 +721,42 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           await vscode.env.clipboard.writeText(data.tag);
           vscode.window.showInformationMessage('Tag name copied to clipboard');
           break;
+        case 'removeWorktree': {
+          const confirm = await vscode.window.showWarningMessage(
+            `Are you sure you want to remove worktree '${data.path}'?`,
+            { modal: true },
+            'Remove'
+          );
+          if (confirm === 'Remove') {
+            const success = await this._gitService.removeWorktree(data.path, false);
+            if (!success) {
+              const forceConfirm = await vscode.window.showWarningMessage(
+                `Failed to remove worktree '${data.path}'. It might have unstaged changes or submodules. Do you want to force remove it?`,
+                { modal: true },
+                'Force Remove'
+              );
+              if (forceConfirm === 'Force Remove') {
+                await this._gitService.removeWorktree(data.path, true);
+              }
+            }
+            this.refresh();
+          }
+          break;
+        }
+        case 'pruneWorktrees': {
+          await this._gitService.pruneWorktrees();
+          this.refresh();
+          break;
+        }
+        case 'openWorktree': {
+          try {
+            const uri = vscode.Uri.file(data.path);
+            await vscode.commands.executeCommand('vscode.openFolder', uri, { forceNewWindow: true });
+          } catch (err: any) {
+            vscode.window.showErrorMessage(`Failed to open worktree in new window: ${err.message || err}`);
+          }
+          break;
+        }
       }
     });
   }
@@ -729,21 +765,22 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     console.log(`GitJBViewProvider: Refreshing with filter: ${this._currentFilter}...`);
     if (this._view) {
       try {
-        const [log, status, branches, tags, authors, currentUser, stashes] = await Promise.all([
+        const [log, status, branches, tags, authors, currentUser, stashes, worktrees] = await Promise.all([
           this._gitService.getLog(this._currentFilter, this._currentAuthorFilter, this._currentSearchFilter, this._currentFileFilter),
           this._gitService.getStatus(),
           this._gitService.getBranches(),
           this._gitService.getTags(),
           this._gitService.getAuthors(),
           this._gitService.getCurrentUser(),
-          this._gitService.getStashes()
+          this._gitService.getStashes(),
+          this._gitService.getWorktrees()
         ]);
 
         console.log(`GitJBViewProvider: Sending update to webview. Log: ${log?.all?.length || 0} commits`);
 
         this._view.webview.postMessage({
           type: 'update',
-          payload: { log, status, branches, tags, authors, currentUser, fileFilter: this._currentFileFilter, stashes }
+          payload: { log, status, branches, tags, authors, currentUser, fileFilter: this._currentFileFilter, stashes, worktrees }
         });
       } catch (err) {
         console.error('GitJBViewProvider: Error during refresh:', err);

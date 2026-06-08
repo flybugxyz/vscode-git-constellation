@@ -50,6 +50,13 @@ export interface Stash {
   date: string;
 }
 
+export interface Worktree {
+  path: string;
+  commit: string;
+  branch: string;
+  isMain: boolean;
+}
+
 export interface GitData {
   log: { all: Commit[] } | null;
   status: GitStatus | null;
@@ -59,4 +66,5 @@ export interface GitData {
   currentUser: { name: string; email: string } | null;
   fileFilter: string;
   stashes?: Stash[];
+  worktrees?: Worktree[];
 }

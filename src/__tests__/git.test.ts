@@ -275,4 +275,67 @@ describe('GitService URL Parsing and Git Commands', () => {
       expect(success).toBe(false);
     });
   });
+
+  describe('worktree operations', () => {
+    it('should get worktrees and parse porcelain output correctly', async () => {
+      const mockPorcelain = `worktree /home/user/project
+commit a0f03948e9c8b7a6e5d4c3b2a190
+branch refs/heads/main
+
+worktree /home/user/project-wt-1
+commit abcde12345
+detached
+
+worktree /home/user/project-wt-2
+commit 1234567890
+branch refs/heads/feature-1`;
+
+      mockSimpleGitInstance.raw.mockResolvedValue(mockPorcelain);
+
+      const worktrees = await gitService.getWorktrees();
+      expect(mockSimpleGitInstance.raw).toHaveBeenCalledWith(['worktree', 'list', '--porcelain']);
+      expect(worktrees).toHaveLength(3);
+      expect(worktrees[0]).toEqual({
+        path: '/home/user/project',
+        commit: 'a0f03948e9c8b7a6e5d4c3b2a190',
+        branch: 'main',
+        isMain: true
+      });
+      expect(worktrees[1]).toEqual({
+        path: '/home/user/project-wt-1',
+        commit: 'abcde12345',
+        branch: '(detached)',
+        isMain: false
+      });
+      expect(worktrees[2]).toEqual({
+        path: '/home/user/project-wt-2',
+        commit: '1234567890',
+        branch: 'feature-1',
+        isMain: false
+      });
+    });
+
+    it('should call removeWorktree with correct parameters', async () => {
+      mockSimpleGitInstance.raw.mockResolvedValue('');
+
+      // Without force
+      const success1 = await gitService.removeWorktree('/home/user/project-wt-1', false);
+      expect(success1).toBe(true);
+      expect(mockSimpleGitInstance.raw).toHaveBeenCalledWith(['worktree', 'remove', '/home/user/project-wt-1']);
+
+      // With force
+      const success2 = await gitService.removeWorktree('/home/user/project-wt-1', true);
+      expect(success2).toBe(true);
+      expect(mockSimpleGitInstance.raw).toHaveBeenCalledWith(['worktree', 'remove', '--force', '/home/user/project-wt-1']);
+    });
+
+    it('should call pruneWorktrees', async () => {
+      mockSimpleGitInstance.raw.mockResolvedValue('');
+
+      const success = await gitService.pruneWorktrees();
+      expect(success).toBe(true);
+      expect(mockSimpleGitInstance.raw).toHaveBeenCalledWith(['worktree', 'prune']);
+    });
+  });
 });
+

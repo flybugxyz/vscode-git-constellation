@@ -71,6 +71,14 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - **Details Pane**: Reuses the Commit Details side pane to view files modified in a selected stash. Clicking a file compares the stashed file's changes against the parent commit it was stashed on.
 - **Operations**: Context menus to Apply, Pop, or Drop a stash. Offers a toolbar action to clear all stashes with VS Code confirmation prompt validation.
 
+### 9. Worktree Management
+- **Integration**: Access via "Worktrees" tab in main UI. Lists worktrees fetched via `git worktree list --porcelain`.
+- **View Details**: Displays Path (identifies Main worktree), Branch, Commit.
+- **Operations**: One-click actions to:
+  - **Open in New Window**: Opens the worktree directory in a new VS Code instance.
+  - **Remove Worktree**: Prompts the user to delete/remove a worktree. Disabled for the main worktree. Falls back to a prompt to force-delete (`--force`) if deletion fails.
+  - **Prune Worktrees**: Clears stale worktree administrative details.
+
 ## Maintenance Guidelines
 - **Building**: Always run `npm run compile` to build both Webview (Vite) and Extension (Webpack).
 - **Styling**: Prefer `var(--vscode-*)` variables for theme compatibility.
@@ -91,8 +99,8 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - `src/git.ts`: Git abstraction layer with input validation safeguards.
 - `src/__tests__/git.test.ts`: Unit test suite verifying GitService operations.
 - `webview/index.html`: Webview entry.
-- `webview/src/App.tsx`: Main UI orchestration (commit table, toolbar, branch popup, author popup, stash tab).
-- `webview/src/types.ts`: Shared TypeScript interface definitions for domain objects (Commit, GitStatus, Stash).
+- `webview/src/App.tsx`: Main UI orchestration (commit table, toolbar, branch popup, author popup, stash tab, worktree tab).
+- `webview/src/types.ts`: Shared TypeScript interface definitions for domain objects (Commit, GitStatus, Stash, Worktree).
 - `webview/src/utils.ts`: Shared UI utility helpers.
 - `webview/src/GitGraph.tsx`: Commit graph rendering.
 - `webview/src/FileTree.tsx`: Modified files tree view.
