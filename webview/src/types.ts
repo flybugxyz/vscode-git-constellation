@@ -43,6 +43,13 @@ export interface GitBranches {
   current: string;
 }
 
+export interface Stash {
+  hash: string;
+  refName: string;
+  message: string;
+  date: string;
+}
+
 export interface GitData {
   log: { all: Commit[] } | null;
   status: GitStatus | null;
@@ -51,4 +58,5 @@ export interface GitData {
   authors: string[];
   currentUser: { name: string; email: string } | null;
   fileFilter: string;
+  stashes?: Stash[];
 }

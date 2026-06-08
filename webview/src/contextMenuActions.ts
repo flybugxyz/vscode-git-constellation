@@ -32,7 +32,9 @@ export function dispatchMenuAction(
     ? menuState.commit.hash
     : kind === 'branch'
       ? menuState.branch
-      : menuState.tag;
+        : kind === 'tag'
+          ? menuState.tag
+          : menuState.stash.refName;
 
   // --- Shared actions ---
   switch (action) {
@@ -73,6 +75,37 @@ export function dispatchMenuAction(
     const { tag } = menuState;
     dispatchTagAction(action, tag, cb);
     return;
+  }
+
+  // --- Stash-specific actions ---
+  if (menuState.kind === 'stash') {
+    const { stash } = menuState;
+    dispatchStashAction(action, stash, cb);
+    return;
+  }
+}
+
+function dispatchStashAction(
+  action: string,
+  stash: any,
+  cb: MenuActionCallbacks,
+): void {
+  switch (action) {
+    case 'applyStash':
+      cb.postMessage({ type: 'applyStash', refName: stash.refName });
+      break;
+    case 'popStash':
+      cb.postMessage({ type: 'popStash', refName: stash.refName });
+      break;
+    case 'dropStash':
+      cb.postMessage({ type: 'dropStash', refName: stash.refName });
+      break;
+    case 'copySHA':
+      cb.postMessage({ type: 'copySHA', hash: stash.hash });
+      break;
+    case 'copyMessage':
+      cb.postMessage({ type: 'copyMessage', message: stash.message });
+      break;
   }
 }
 
@@ -282,3 +315,15 @@ export function getTagMenuItems(): MenuEntry[] {
     { label: 'Open in Browser', icon: 'link-external', action: 'openInBrowser' },
   ];
 }
+
+export function getStashMenuItems(): MenuEntry[] {
+  return [
+    { label: 'Apply Stash', icon: 'check', action: 'applyStash' },
+    { label: 'Pop Stash', icon: 'git-merge', action: 'popStash' },
+    { label: 'Drop Stash...', icon: 'trash', action: 'dropStash', danger: true },
+    { type: 'separator' },
+    { label: 'Copy Message', icon: 'copy', action: 'copyMessage' },
+    { label: 'Copy Hash', icon: 'copy', action: 'copySHA' },
+  ];
+}
+

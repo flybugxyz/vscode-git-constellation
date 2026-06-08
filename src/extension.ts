@@ -290,6 +290,88 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           }
           break;
         }
+        case 'generateStashMessage': {
+          const config = vscode.workspace.getConfiguration('git-constellation.openai');
+          const apiUrl = config.get<string>('apiUrl');
+          const apiKey = config.get<string>('apiKey');
+          const model = config.get<string>('model');
+
+          if (!apiKey || !apiUrl) {
+            const action = await vscode.window.showWarningMessage('OpenAI API Key and URL must be configured to generate stash descriptions.', 'Open Settings');
+            if (action === 'Open Settings') {
+              vscode.commands.executeCommand('workbench.action.openSettings', 'git-constellation.openai');
+            }
+            this._view?.webview.postMessage({ type: 'generateStashMessageResult', error: 'Not configured' });
+            break;
+          }
+
+          try {
+            await vscode.window.withProgress({
+              location: vscode.ProgressLocation.Notification,
+              title: "Generating stash description...",
+              cancellable: false
+            }, async () => {
+              const files = data.files || [];
+              const diff = await this._gitService.getDiffForFiles(files);
+              if (!diff.trim()) {
+                throw new Error("No diff available for the selected files.");
+              }
+
+              const systemPrompt = "You are an AI assistant helping a developer write a concise description for a git stash. Based on the provided git diff, generate a one-line summary of the changes being stashed. Keep it under 60 characters and write only the summary. Do not prefix with 'stash' or 'WIP' as the system will label it, just summarize the main purpose of the changes.";
+              const result = await requestAIApi(apiUrl, apiKey, {
+                model: model,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: `Here is the git diff:\n\n${diff}` }
+                ]
+              });
+
+              if (result && result.choices && result.choices[0]) {
+                const message = result.choices[0].message.content.trim();
+                this._view?.webview.postMessage({ type: 'generateStashMessageResult', message });
+              } else {
+                throw new Error("Unexpected response structure");
+              }
+            });
+          } catch (err: any) {
+            vscode.window.showErrorMessage(`Failed to generate stash message: ${err.message}`);
+            this._view?.webview.postMessage({ type: 'generateStashMessageResult', error: err.message });
+          }
+          break;
+        }
+        case 'applyStash':
+          await this._gitService.applyStash(data.refName);
+          this.refresh();
+          break;
+        case 'popStash':
+          await this._gitService.popStash(data.refName);
+          this.refresh();
+          break;
+        case 'dropStash':
+          await this._gitService.dropStash(data.refName);
+          this.refresh();
+          break;
+        case 'clearStashes': {
+          const confirm = await vscode.window.showWarningMessage(
+            `Are you sure you want to clear all stashes? This operation cannot be undone.`,
+            { modal: true },
+            'Clear All'
+          );
+          if (confirm === 'Clear All') {
+            await this._gitService.clearStashes();
+            this.refresh();
+          }
+          break;
+        }
+        case 'createStash':
+          await this._gitService.createStash(data.message, data.keepIndex, data.includeUntracked);
+          this.refresh();
+          break;
+        case 'getStashFiles': {
+          const files = await this._gitService.getStashFiles(data.hash);
+          this._view?.webview.postMessage({ type: 'files', hash: data.hash, files });
+          break;
+        }
         case 'getDiff':
           const files = await this._gitService.getCommitFiles(data.hash);
           this._view?.webview.postMessage({ type: 'files', hash: data.hash, files });
@@ -647,20 +729,21 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     console.log(`GitJBViewProvider: Refreshing with filter: ${this._currentFilter}...`);
     if (this._view) {
       try {
-        const [log, status, branches, tags, authors, currentUser] = await Promise.all([
+        const [log, status, branches, tags, authors, currentUser, stashes] = await Promise.all([
           this._gitService.getLog(this._currentFilter, this._currentAuthorFilter, this._currentSearchFilter, this._currentFileFilter),
           this._gitService.getStatus(),
           this._gitService.getBranches(),
           this._gitService.getTags(),
           this._gitService.getAuthors(),
-          this._gitService.getCurrentUser()
+          this._gitService.getCurrentUser(),
+          this._gitService.getStashes()
         ]);
 
         console.log(`GitJBViewProvider: Sending update to webview. Log: ${log?.all?.length || 0} commits`);
 
         this._view.webview.postMessage({
           type: 'update',
-          payload: { log, status, branches, tags, authors, currentUser, fileFilter: this._currentFileFilter }
+          payload: { log, status, branches, tags, authors, currentUser, fileFilter: this._currentFileFilter, stashes }
         });
       } catch (err) {
         console.error('GitJBViewProvider: Error during refresh:', err);

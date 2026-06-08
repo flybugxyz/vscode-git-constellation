@@ -4,6 +4,7 @@ import {
   getCommitMenuItems,
   getBranchMenuItems,
   getTagMenuItems,
+  getStashMenuItems,
   MenuActionCallbacks,
 } from '../contextMenuActions';
 import type { MenuState } from '../App';
@@ -365,3 +366,77 @@ describe('getTagMenuItems', () => {
     expect(deleteItem?.danger).toBe(true);
   });
 });
+
+describe('stash-specific actions', () => {
+  const sampleStash = {
+    hash: 'stash-hash-123',
+    refName: 'stash@{0}',
+    message: 'WIP on main: stash message',
+    date: '1700000000',
+  };
+
+  it('applyStash posts correct message', () => {
+    const cb = createCallbacks();
+    const menu = { kind: 'stash', stash: sampleStash, x: 0, y: 0 } as any;
+
+    dispatchMenuAction(menu, 'applyStash', cb);
+
+    expect(cb.postMessage).toHaveBeenCalledWith({ type: 'applyStash', refName: 'stash@{0}' });
+  });
+
+  it('popStash posts correct message', () => {
+    const cb = createCallbacks();
+    const menu = { kind: 'stash', stash: sampleStash, x: 0, y: 0 } as any;
+
+    dispatchMenuAction(menu, 'popStash', cb);
+
+    expect(cb.postMessage).toHaveBeenCalledWith({ type: 'popStash', refName: 'stash@{0}' });
+  });
+
+  it('dropStash posts correct message', () => {
+    const cb = createCallbacks();
+    const menu = { kind: 'stash', stash: sampleStash, x: 0, y: 0 } as any;
+
+    dispatchMenuAction(menu, 'dropStash', cb);
+
+    expect(cb.postMessage).toHaveBeenCalledWith({ type: 'dropStash', refName: 'stash@{0}' });
+  });
+
+  it('copySHA posts correct message', () => {
+    const cb = createCallbacks();
+    const menu = { kind: 'stash', stash: sampleStash, x: 0, y: 0 } as any;
+
+    dispatchMenuAction(menu, 'copySHA', cb);
+
+    expect(cb.postMessage).toHaveBeenCalledWith({ type: 'copySHA', hash: 'stash-hash-123' });
+  });
+
+  it('copyMessage posts correct message', () => {
+    const cb = createCallbacks();
+    const menu = { kind: 'stash', stash: sampleStash, x: 0, y: 0 } as any;
+
+    dispatchMenuAction(menu, 'copyMessage', cb);
+
+    expect(cb.postMessage).toHaveBeenCalledWith({ type: 'copyMessage', message: 'WIP on main: stash message' });
+  });
+});
+
+describe('getStashMenuItems', () => {
+  it('returns 6 items including separators', () => {
+    const items = getStashMenuItems();
+    expect(items).toHaveLength(6);
+  });
+
+  it('includes Apply Stash as first item', () => {
+    const items = getStashMenuItems();
+    const first = items[0] as MenuItem;
+    expect(first.label).toBe('Apply Stash');
+  });
+
+  it('marks Drop Stash as danger', () => {
+    const items = getStashMenuItems();
+    const deleteItem = (items.filter((i): i is MenuItem => 'label' in i)).find(i => i.action === 'dropStash');
+    expect(deleteItem?.danger).toBe(true);
+  });
+});
+

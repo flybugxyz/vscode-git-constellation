@@ -791,6 +791,51 @@ body.resizing-row * {
   color: var(--vscode-foreground, #cccccc);
 }
 
+/* Stash View & Form Styles */
+.stash-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.stash-form-panel {
+  padding: 12px;
+  border-bottom: var(--jb-border);
+  background-color: var(--vscode-editorWidget-background, rgba(0,0,0,0.05));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: stash-form-slide-down 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+@keyframes stash-form-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stash-form-options {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.stash-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+
 
 
 

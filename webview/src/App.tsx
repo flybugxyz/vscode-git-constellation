@@ -5,13 +5,14 @@ import { ContextMenu, MenuEntry } from './ContextMenu';
 import { CommitHoverPopup } from './CommitHoverPopup';
 import { CommitDetailsSidePane } from './CommitDetailsSidePane';
 import { LocalChangesPanel } from './LocalChangesPanel';
-import { Commit, GitStatusFile, GitData } from './types';
+import { Commit, GitStatusFile, GitData, Stash } from './types';
 import { formatDate } from './utils';
 import {
   dispatchMenuAction,
   getCommitMenuItems as buildCommitMenuItems,
   getBranchMenuItems as buildBranchMenuItems,
   getTagMenuItems as buildTagMenuItems,
+  getStashMenuItems as buildStashMenuItems,
   MenuActionCallbacks,
 } from './contextMenuActions';
 import { useResizable } from './hooks/useResizable';
@@ -24,8 +25,9 @@ type MenuStateBase = { x: number; y: number };
 type CommitMenu = MenuStateBase & { kind: 'commit'; commit: Commit; index: number };
 type BranchMenu = MenuStateBase & { kind: 'branch'; branch: string; isRemote: boolean };
 type TagMenu = MenuStateBase & { kind: 'tag'; tag: string };
+type StashMenu = MenuStateBase & { kind: 'stash'; stash: Stash };
 
-export type MenuState = CommitMenu | BranchMenu | TagMenu;
+export type MenuState = CommitMenu | BranchMenu | TagMenu | StashMenu;
 
 function App() {
   const [gitData, setGitData] = useState<GitData | null>(null);
@@ -54,13 +56,21 @@ function App() {
       return new Set<string>();
     }
   });
-  const [activeTab, setActiveTab] = useState<'log' | 'local'>('log');
+  const [activeTab, setActiveTab] = useState<'log' | 'local' | 'stashes'>('log');
   const [commitMessage, setCommitMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showBranches, setShowBranches] = useState(false);
   const [filterBranch, setFilterBranch] = useState<string>('ALL');
   const [filterAuthor, setFilterAuthor] = useState<string>('ALL');
   const [authorPopupPos, setAuthorPopupPos] = useState<{ x: number, y: number } | null>(null);
+
+  // Stash state variables
+  const [selectedStashIndex, setSelectedStashIndex] = useState<number>(-1);
+  const [showCreateStash, setShowCreateStash] = useState<boolean>(false);
+  const [stashMessage, setStashMessage] = useState<string>('');
+  const [stashKeepIndex, setStashKeepIndex] = useState<boolean>(false);
+  const [stashIncludeUntracked, setStashIncludeUntracked] = useState<boolean>(true);
+  const [isStashGenerating, setIsStashGenerating] = useState<boolean>(false);
   const [localExpanded, setLocalExpanded] = useState(true);
   const [remoteExpanded, setRemoteExpanded] = useState(false);
   const [tagsExpanded, setTagsExpanded] = useState(false);
@@ -126,6 +136,12 @@ function App() {
           setIsGenerating(false);
           if (message.message) {
             setCommitMessage(message.message);
+          }
+          break;
+        case 'generateStashMessageResult':
+          setIsStashGenerating(false);
+          if (message.message) {
+            setStashMessage(message.message);
           }
           break;
       }
@@ -216,7 +232,10 @@ function App() {
 
   const handleCloseMenu = React.useCallback(() => setMenuState(null), []);
 
-  const openContextMenu = (e: React.MouseEvent, data: Omit<CommitMenu, 'x' | 'y'> | Omit<BranchMenu, 'x' | 'y'> | Omit<TagMenu, 'x' | 'y'>) => {
+  const openContextMenu = (
+    e: React.MouseEvent,
+    data: Omit<CommitMenu, 'x' | 'y'> | Omit<BranchMenu, 'x' | 'y'> | Omit<TagMenu, 'x' | 'y'> | Omit<StashMenu, 'x' | 'y'>
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     setShowBranches(false);
@@ -225,6 +244,33 @@ function App() {
       x: e.clientX,
       y: e.clientY
     } as MenuState);
+  };
+
+  const handleSelectStash = (idx: number, stash: Stash) => {
+    setSelectedStashIndex(idx);
+    selection.clearSelection();
+    setIsCompareMode(false);
+    vscode.postMessage({ type: 'getStashFiles', hash: stash.hash });
+  };
+
+  const handleGenerateStashAI = () => {
+    setIsStashGenerating(true);
+    // Use checked files from Local Changes if selected, otherwise generate for all local changes
+    const files = checkedFiles.size > 0 
+      ? Array.from(checkedFiles) 
+      : (gitData?.status?.files || []).map(f => f.path);
+    vscode.postMessage({ type: 'generateStashMessage', files });
+  };
+
+  const handleCreateStash = () => {
+    vscode.postMessage({
+      type: 'createStash',
+      message: stashMessage,
+      keepIndex: stashKeepIndex,
+      includeUntracked: stashIncludeUntracked
+    });
+    setStashMessage('');
+    setShowCreateStash(false);
   };
 
   const handleMenuAction = (action: string) => {
@@ -260,8 +306,10 @@ function App() {
 
   const getTagMenuItems = (): MenuEntry[] => buildTagMenuItems();
 
+  const getStashMenuItems = (): MenuEntry[] => buildStashMenuItems();
 
   const selectedCommit = selection.selectedIndex >= 0 ? gitData?.log?.all[selection.selectedIndex] : null;
+  const selectedStash = selectedStashIndex >= 0 && gitData?.stashes ? gitData.stashes[selectedStashIndex] : null;
 
   const renderRefs = (refs: string) => {
     if (!refs) return null;
@@ -320,9 +368,12 @@ function App() {
   return (
     <div className="container">
       <div className="tabs">
-        <div className={`tab ${activeTab === 'log' ? 'active' : ''}`} onClick={() => setActiveTab('log')}>Log</div>
-        <div className={`tab ${activeTab === 'local' ? 'active' : ''}`} onClick={() => { setActiveTab('local'); selection.clearSelection(); setIsCompareMode(false); }}>
+        <div className={`tab ${activeTab === 'log' ? 'active' : ''}`} onClick={() => { setActiveTab('log'); setSelectedStashIndex(-1); }}>Log</div>
+        <div className={`tab ${activeTab === 'local' ? 'active' : ''}`} onClick={() => { setActiveTab('local'); selection.clearSelection(); setIsCompareMode(false); setSelectedStashIndex(-1); }}>
           Local Changes {gitData?.status?.files && gitData.status.files.length > 0 && `(${gitData.status.files.length})`}
+        </div>
+        <div className={`tab ${activeTab === 'stashes' ? 'active' : ''}`} onClick={() => { setActiveTab('stashes'); selection.clearSelection(); setIsCompareMode(false); setSelectedStashIndex(-1); }}>
+          Stashes {gitData?.stashes && gitData.stashes.length > 0 && `(${gitData.stashes.length})`}
         </div>
       </div>
 
@@ -660,6 +711,148 @@ function App() {
               />
             )}
           </div>
+        ) : activeTab === 'stashes' ? (
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <div className="stash-panel">
+              <div className="header" style={{ justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    style={{ background: 'none', border: '1px solid var(--vscode-panel-border)', padding: '2px 8px', fontSize: '10px' }}
+                    onClick={() => setShowCreateStash(!showCreateStash)}
+                  >
+                    Stash Changes...
+                  </button>
+                  <button
+                    style={{ background: 'none', border: '1px solid var(--vscode-panel-border)', padding: '2px 8px', fontSize: '10px' }}
+                    onClick={() => vscode.postMessage({ type: 'clearStashes' })}
+                    disabled={!gitData?.stashes || gitData.stashes.length === 0}
+                  >
+                    Clear All
+                  </button>
+                  <span style={{ marginLeft: '20px' }}>{gitData?.stashes?.length || 0} stashes</span>
+                </div>
+                <div className="header-actions">
+                  <button 
+                    className="toolbar-button" 
+                    title="Refresh Stash List"
+                    onClick={() => vscode.postMessage({ type: 'ready' })}
+                  >
+                    <span className="codicon codicon-refresh"></span>
+                  </button>
+                </div>
+              </div>
+
+              {showCreateStash && (
+                <div className="stash-form-panel">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--vscode-descriptionForeground)' }}>Stash Description</span>
+                    <button
+                      className="ai-generate-button"
+                      title="Generate Stash Description (AI)"
+                      onClick={handleGenerateStashAI}
+                      disabled={isStashGenerating}
+                    >
+                      <span className={`codicon ${isStashGenerating ? 'codicon-loading codicon-modifier-spin' : 'codicon-sparkle'}`} style={{ fontSize: '12px' }}></span>
+                      {isStashGenerating ? 'Generating...' : 'AI Generate'}
+                    </button>
+                  </div>
+                  <textarea
+                    placeholder="Stash description"
+                    value={stashMessage}
+                    onChange={(e) => setStashMessage(e.target.value)}
+                    style={{ height: '60px', resize: 'none' }}
+                  />
+                  <div className="stash-form-options">
+                    <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: '4px' }}>
+                      <input
+                        type="checkbox"
+                        checked={stashKeepIndex}
+                        onChange={(e) => setStashKeepIndex(e.target.checked)}
+                        style={{ marginRight: '6px' }}
+                      />
+                      Keep Staged Changes (Keep Index)
+                    </label>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: '4px' }}>
+                      <input
+                        type="checkbox"
+                        checked={stashIncludeUntracked}
+                        onChange={(e) => setStashIncludeUntracked(e.target.checked)}
+                        style={{ marginRight: '6px' }}
+                      />
+                      Include Untracked Files
+                    </label>
+                  </div>
+                  <div className="stash-form-actions">
+                    <button onClick={handleCreateStash}>
+                      Stash
+                    </button>
+                    <button className="button-secondary" onClick={() => setShowCreateStash(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="table-container" style={{ flex: 1 }}>
+                <table style={{ tableLayout: 'fixed', width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '150px' }}>Reference</th>
+                      <th style={{ width: 'auto' }}>Message</th>
+                      <th style={{ width: '150px' }}>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gitData?.stashes && gitData.stashes.length > 0 ? (
+                      gitData.stashes.map((stash, idx) => (
+                        <tr
+                          key={stash.hash}
+                          className={selectedStashIndex === idx ? 'selected' : ''}
+                          onClick={() => handleSelectStash(idx, stash)}
+                          onContextMenu={(e) => openContextMenu(e, { kind: 'stash', stash })}
+                        >
+                          <td>{stash.refName}</td>
+                          <td>{stash.message}</td>
+                          <td>{formatDate(stash.date, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} style={{ textAlign: 'center', opacity: 0.6, padding: '20px 0' }}>No stashes found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {selectedStash && (
+              <CommitDetailsSidePane
+                commit={{
+                  hash: selectedStash.hash,
+                  parents: [],
+                  refs: selectedStash.refName,
+                  message: selectedStash.message,
+                  author_name: 'Stash Reference',
+                  author_email: selectedStash.refName,
+                  date: selectedStash.date
+                } as any}
+                files={selectedCommitFiles}
+                isCompareMode={isCompareMode}
+                filesExpanded={filesExpanded}
+                detailsExpanded={detailsExpanded}
+                onClose={() => { setSelectedStashIndex(-1); setSelectedCommitFiles(null); setIsCompareMode(false); }}
+                onFileClick={handleFileClick}
+                onExitCompare={() => {
+                  setIsCompareMode(false);
+                  vscode.postMessage({ type: 'getStashFiles', hash: selectedStash.hash });
+                }}
+                onToggleFiles={() => setFilesExpanded(!filesExpanded)}
+                onToggleDetails={() => setDetailsExpanded(!detailsExpanded)}
+                renderRefs={renderRefs}
+              />
+            )}
+          </div>
         ) : (
           <LocalChangesPanel
             files={gitData?.status?.files || []}
@@ -711,7 +904,15 @@ function App() {
         <ContextMenu
           x={menuState.x}
           y={menuState.y}
-          items={menuState.kind === 'commit' ? getCommitMenuItems() : menuState.kind === 'branch' ? getBranchMenuItems() : getTagMenuItems()}
+          items={
+            menuState.kind === 'commit'
+              ? getCommitMenuItems()
+              : menuState.kind === 'branch'
+                ? getBranchMenuItems()
+                : menuState.kind === 'tag'
+                  ? getTagMenuItems()
+                  : getStashMenuItems()
+          }
           onAction={handleMenuAction}
           onClose={handleCloseMenu}
         />
