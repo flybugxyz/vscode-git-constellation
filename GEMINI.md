@@ -72,7 +72,8 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 
 ## Testing
 - **Framework**: Vitest unit testing.
-- **Run command**: `npm run test` executes the unit test suite inside `src/__tests__/`.
+- **Run command**: `npm run test` executes the unit test suite.
+- **Test locations**: `src/__tests__/` (extension host) and `webview/src/__tests__/` (webview logic).
 - **Mocks**: Out-of-process modules like `vscode` and `simple-git` are mocked under `src/__tests__/git.test.ts`.
 
 ## File Manifest
@@ -83,10 +84,17 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - `src/git.ts`: Git abstraction layer with input validation safeguards.
 - `src/__tests__/git.test.ts`: Unit test suite verifying GitService operations.
 - `webview/index.html`: Webview entry.
-- `webview/src/App.tsx`: Main UI orchestration.
+- `webview/src/App.tsx`: Main UI orchestration (commit table, toolbar, branch popup, author popup).
 - `webview/src/types.ts`: Shared TypeScript interface definitions for domain objects.
 - `webview/src/utils.ts`: Shared UI utility helpers.
 - `webview/src/GitGraph.tsx`: Commit graph rendering.
 - `webview/src/FileTree.tsx`: Modified files tree view.
 - `webview/src/ContextMenu.tsx`: Unified context menu component with keyboard navigation.
+- `webview/src/CommitDetailsSidePane.tsx`: Commit details side pane (changed files + commit metadata).
+- `webview/src/CommitHoverPopup.tsx`: Hover popup showing commit details on mouse hover.
+- `webview/src/LocalChangesPanel.tsx`: Local changes panel (file tree + commit box + AI generate).
+- `webview/src/contextMenuActions.ts`: Pure logic for context menu item builders and action dispatch.
+- `webview/src/hooks/useResizable.ts`: Custom hook for column/commit-box drag-resize with localStorage persistence.
+- `webview/src/hooks/useCommitSelection.ts`: Custom hook for commit multi-select/range-select/squash logic.
+- `webview/src/__tests__/contextMenuActions.test.ts`: Unit tests for context menu actions (34 tests).
 - `webview/src/styles.css`: Global styles and theme overrides.
