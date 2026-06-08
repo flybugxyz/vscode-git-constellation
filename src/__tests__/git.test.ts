@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { validateBranchName, validateHash, validateFilePath, GitService } from '../git';
 import * as fs from 'fs';
 
@@ -104,8 +104,15 @@ describe('GitService URL Parsing and Git Commands', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Spy and suppress console logs/errors during tests to keep output clean
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     // Instantiate GitService
     gitService = new GitService();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('getHttpRemoteUrl', () => {
