@@ -10,6 +10,7 @@ export function validateBranchName(name: string): void {
 }
 
 export function validateHash(hash: string): void {
+  if (hash === 'HEAD') return;
   if (!hash || !/^[a-fA-F0-9]{4,40}$/.test(hash)) {
     throw new Error(`Invalid commit hash: "${hash}"`);
   }
@@ -322,6 +323,7 @@ export class GitService {
 
   public async getFileContent(hash: string, path: string) {
     if (!this._git) return '';
+    if (hash === '') return '';
     validateHash(hash);
     validateFilePath(path);
     try {
