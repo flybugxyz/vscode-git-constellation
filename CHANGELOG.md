@@ -2,6 +2,16 @@
 
 All notable changes to the **GitConstellation** extension will be documented in this file.
 
+## [1.0.2] - 2026-06-09
+
+### Added
+- **Multiline Commit Messages**: Render carriage returns and newlines correctly in Commit Details Side Pane and Commit Hover Popup.
+- **Editor Context Menu integration**: Added "View File History (GitConstellation)" to editor context menu in addition to explorer context menu.
+- **Auto-Switch Tab**: Automatically switch the active panel tab to "Log" when invoking "View File History" from the file explorer context menu.
+
+### Fixed
+- **Git Diff Normalization**: Allowed HEAD and empty hashes in Git service, fixing a runtime error when comparing files or viewing diffs across certain Git states.
+
 ## [1.0.1] - 2026-06-08
 
 ### Added
