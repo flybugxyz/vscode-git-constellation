@@ -71,7 +71,7 @@ export function CommitDetailsSidePane({
       </div>
       {detailsExpanded && (
         <div className="commit-details">
-          <div className="detail-row">
+          <div className="detail-row" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             <b>{commit?.message}</b>
           </div>
           <div className="detail-row">

@@ -337,5 +337,58 @@ branch refs/heads/feature-1`;
       expect(mockSimpleGitInstance.raw).toHaveBeenCalledWith(['worktree', 'prune']);
     });
   });
+
+  describe('getLog and getStashes with multiline and tab-containing messages', () => {
+    it('should correctly parse multiline commit messages and tab characters in getLog', async () => {
+      const mockRawLog = 'hash1\tparent1 parent2\trefs/heads/main\tline 1\nline 2 with a \t tab\tAuthor One\tauthor1@example.com\t1234567890\0hash2\t\t\tshort message\tAuthor Two\tauthor2@example.com\t1234567891\0';
+      mockSimpleGitInstance.raw.mockResolvedValue(mockRawLog);
+
+      const logs = await gitService.getLog('ALL');
+      expect(logs.all).toHaveLength(2);
+      
+      expect(logs.all[0]).toEqual({
+        hash: 'hash1',
+        parents: ['parent1', 'parent2'],
+        refs: 'refs/heads/main',
+        message: 'line 1\nline 2 with a \t tab',
+        author_name: 'Author One',
+        author_email: 'author1@example.com',
+        date: '1234567890'
+      });
+
+      expect(logs.all[1]).toEqual({
+        hash: 'hash2',
+        parents: [],
+        refs: '',
+        message: 'short message',
+        author_name: 'Author Two',
+        author_email: 'author2@example.com',
+        date: '1234567891'
+      });
+    });
+
+    it('should correctly parse multiline stash messages and tab characters in getStashes', async () => {
+      const mockRawStash = 'hash1\tstash@{0}\tstash line 1\nstash line 2 with a \t tab\t1234567890\0hash2\tstash@{1}\tshort stash message\t1234567891\0';
+      mockSimpleGitInstance.raw.mockResolvedValue(mockRawStash);
+
+      const stashes = await gitService.getStashes();
+      expect(stashes).toHaveLength(2);
+
+      expect(stashes[0]).toEqual({
+        hash: 'hash1',
+        refName: 'stash@{0}',
+        message: 'stash line 1\nstash line 2 with a \t tab',
+        date: '1234567890'
+      });
+
+      expect(stashes[1]).toEqual({
+        hash: 'hash2',
+        refName: 'stash@{1}',
+        message: 'short stash message',
+        date: '1234567891'
+      });
+    });
+  });
 });
+
 

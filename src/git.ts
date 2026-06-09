@@ -65,19 +65,26 @@ export class GitService {
         validateFilePath(filePath);
       }
 
-      const formatStr = '--format=%H%x09%P%x09%D%x09%s%x09%an%x09%ae%x09%at';
+      const formatStr = '--format=%H%x09%P%x09%D%x09%B%x09%an%x09%ae%x09%at%x00';
       const parseCommits = (rawResult: string) => {
-        const lines = rawResult.trim().split('\n');
-        return lines.filter(Boolean).map(line => {
-          const [hash, parents, refs, message, author, email, date] = line.split('\t');
+        const entries = rawResult.split('\0');
+        return entries.map(entry => entry.trim()).filter(Boolean).map(entry => {
+          const parts = entry.split('\t');
+          const hash = parts[0] || '';
+          const parents = parts[1] || '';
+          const refs = parts[2] || '';
+          const date = parts.length >= 7 ? parts[parts.length - 1] : '';
+          const email = parts.length >= 7 ? parts[parts.length - 2] : '';
+          const author = parts.length >= 7 ? parts[parts.length - 3] : '';
+          const message = parts.length >= 7 ? parts.slice(3, parts.length - 3).join('\t') : '';
           return {
             hash,
             parents: parents ? parents.split(' ') : [],
             refs: refs || '',
-            message,
-            author_name: author,
-            author_email: email,
-            date
+            message: message || '',
+            author_name: author || '',
+            author_email: email || '',
+            date: date || ''
           };
         });
       };
@@ -982,9 +989,14 @@ export class GitService {
   public async getStashes(): Promise<{ hash: string, refName: string, message: string, date: string }[]> {
     if (!this._git) return [];
     try {
-      const result = await this._git.raw(['stash', 'list', '--format=%H%x09%gd%x09%gs%x09%at']);
-      return result.trim().split('\n').filter(Boolean).map(line => {
-        const [hash, refName, message, date] = line.split('\t');
+      const result = await this._git.raw(['stash', 'list', '--format=%H%x09%gd%x09%gB%x09%at%x00']);
+      const entries = result.split('\0');
+      return entries.map(entry => entry.trim()).filter(Boolean).map(entry => {
+        const parts = entry.split('\t');
+        const hash = parts[0] || '';
+        const refName = parts[1] || '';
+        const date = parts.length >= 4 ? parts[parts.length - 1] : '';
+        const message = parts.length >= 4 ? parts.slice(2, parts.length - 1).join('\t') : '';
         return { hash, refName, message, date };
       });
     } catch (err) {

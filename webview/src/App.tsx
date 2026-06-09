@@ -681,7 +681,7 @@ function App() {
                             <div style={{ display: 'flex', flexWrap: 'nowrap', marginRight: '8px', flexShrink: 0 }}>
                               {renderRefs(commit.refs)}
                             </div>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{commit.message}</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{commit.message.split('\n')[0]}</span>
                           </div>
                         </td>
                         <td>
@@ -823,7 +823,7 @@ function App() {
                           onContextMenu={(e) => openContextMenu(e, { kind: 'stash', stash })}
                         >
                           <td>{stash.refName}</td>
-                          <td>{stash.message}</td>
+                          <td>{stash.message.split('\n')[0]}</td>
                           <td>{formatDate(stash.date, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                         </tr>
                       ))
