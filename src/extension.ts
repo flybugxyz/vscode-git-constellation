@@ -95,11 +95,12 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('git-constellation.viewFileHistory', async (uri: vscode.Uri) => {
-      if (uri && uri.scheme === 'file') {
+    vscode.commands.registerCommand('git-constellation.viewFileHistory', async (uri?: vscode.Uri) => {
+      const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+      if (targetUri && targetUri.scheme === 'file') {
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (workspaceRoot) {
-          const relativePath = path.relative(workspaceRoot, uri.fsPath).replace(/\\/g, '/');
+          const relativePath = path.relative(workspaceRoot, targetUri.fsPath).replace(/\\/g, '/');
           await vscode.commands.executeCommand('git-constellation.log.focus');
           provider.setFileFilter(relativePath);
         }

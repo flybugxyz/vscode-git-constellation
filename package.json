@@ -35,6 +35,13 @@
           "when": "resourceScheme == file",
           "group": "git-constellation"
         }
+      ],
+      "editor/context": [
+        {
+          "command": "git-constellation.viewFileHistory",
+          "when": "resourceScheme == file",
+          "group": "git-constellation"
+        }
       ]
     },
     "configuration": {
