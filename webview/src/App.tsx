@@ -121,8 +121,16 @@ function App() {
           if (payload.fileFilter !== undefined) {
             setFileFilter(payload.fileFilter);
           }
+          if (payload.selectTab) {
+            setActiveTab(payload.selectTab);
+          }
           if (payload.log?.all) {
             selection.clampIndices(payload.log.all.length);
+          }
+          break;
+        case 'selectTab':
+          if (message.tab) {
+            setActiveTab(message.tab);
           }
           break;
         case 'files':

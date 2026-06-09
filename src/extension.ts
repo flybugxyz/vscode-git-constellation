@@ -159,11 +159,14 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   private _currentSearchFilter: string = '';
   private _currentFileFilter: string = '';
   private _refreshTimer?: NodeJS.Timeout;
+  private _pendingTabSelection?: 'log' | 'local' | 'stashes' | 'worktrees';
 
   public setFileFilter(file: string) {
     this._currentFileFilter = file;
+    this._pendingTabSelection = 'log';
     if (this._view) {
       this._view.show?.(true);
+      this._view.webview.postMessage({ type: 'selectTab', tab: 'log' });
     }
     this.refresh();
   }
@@ -780,8 +783,20 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
 
         this._view.webview.postMessage({
           type: 'update',
-          payload: { log, status, branches, tags, authors, currentUser, fileFilter: this._currentFileFilter, stashes, worktrees }
+          payload: {
+            log,
+            status,
+            branches,
+            tags,
+            authors,
+            currentUser,
+            fileFilter: this._currentFileFilter,
+            stashes,
+            worktrees,
+            selectTab: this._pendingTabSelection
+          }
         });
+        this._pendingTabSelection = undefined;
       } catch (err) {
         console.error('GitJBViewProvider: Error during refresh:', err);
       }
