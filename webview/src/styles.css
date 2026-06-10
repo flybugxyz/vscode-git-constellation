@@ -374,8 +374,36 @@ input[type="checkbox"] {
   box-shadow: 0 4px 8px rgba(0,0,0,0.3);
   z-index: 100;
   max-height: 300px;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+}
+
+.branch-popup-search-container {
+  padding: 6px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background-color: var(--vscode-sideBar-background);
+  flex-shrink: 0;
+}
+
+.branch-popup-search-input {
+  width: 100%;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  padding: 4px 6px;
+  font-size: 11px;
+  border-radius: 2px;
+  outline: none;
+}
+
+.branch-popup-search-input:focus {
+  border-color: var(--vscode-focusBorder);
+}
+
+.branch-popup-items {
   overflow-y: auto;
-  min-width: 200px;
+  flex: 1;
 }
 
 .branch-item {
