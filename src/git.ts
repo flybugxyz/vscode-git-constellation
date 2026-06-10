@@ -28,16 +28,79 @@ export function validateStashRef(ref: string): void {
   }
 }
 
+export interface RepositoryInfo {
+  name: string;
+  path: string;
+  isMain: boolean;
+}
+
 export class GitService {
-  private _git?: SimpleGit;
   private _workspaceRoot?: string;
+  private _activeRepoPath?: string;
+  private _gitInstances: Map<string, SimpleGit> = new Map();
+  private _repositories: RepositoryInfo[] = [];
 
   constructor() {
     this._workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     console.log('GitService initialized with workspace root:', this._workspaceRoot);
     if (this._workspaceRoot) {
-      this._git = simpleGit(this._workspaceRoot);
+      this._activeRepoPath = this._workspaceRoot;
+      this._gitInstances.set(this._workspaceRoot, simpleGit(this._workspaceRoot));
     }
+  }
+
+  public get activeRepoPath(): string | undefined {
+    return this._activeRepoPath;
+  }
+
+  public setActiveRepo(path: string) {
+    this._activeRepoPath = path;
+  }
+
+  private get _git(): SimpleGit | undefined {
+    if (!this._activeRepoPath) return undefined;
+    if (!this._gitInstances.has(this._activeRepoPath)) {
+      this._gitInstances.set(this._activeRepoPath, simpleGit(this._activeRepoPath));
+    }
+    return this._gitInstances.get(this._activeRepoPath);
+  }
+
+  public async getRepositories(): Promise<RepositoryInfo[]> {
+    if (!this._workspaceRoot) return [];
+    
+    // Always return main repo first
+    const repos: RepositoryInfo[] = [{
+      name: pathModule.basename(this._workspaceRoot),
+      path: this._workspaceRoot,
+      isMain: true
+    }];
+
+    try {
+      const mainGit = this._gitInstances.get(this._workspaceRoot) || simpleGit(this._workspaceRoot);
+      const submodulesOutput = await mainGit.raw(['submodule', 'status']);
+      if (submodulesOutput && submodulesOutput.trim()) {
+        const lines = submodulesOutput.trim().split('\n');
+        for (const line of lines) {
+          const match = line.match(/^[\s\+\-U][a-fA-F0-9]{40}\s+(.+?)(?:\s+\(.*?\))?$/);
+          if (match && match[1]) {
+            const subPath = match[1];
+            const fullPath = pathModule.join(this._workspaceRoot, subPath);
+            if (fs.existsSync(fullPath)) {
+               repos.push({
+                 name: pathModule.basename(fullPath),
+                 path: fullPath,
+                 isMain: false
+               });
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching submodules:', err);
+    }
+    
+    this._repositories = repos;
+    return repos;
   }
 
   public async getLog(branch: string = 'ALL', author: string = 'ALL', search: string = '', filePath: string = ''): Promise<any | undefined> {
@@ -281,7 +344,7 @@ export class GitService {
 
       for (const file of untrackedList) {
         try {
-          const fullPath = pathModule.resolve(this._workspaceRoot || '', file);
+          const fullPath = pathModule.resolve(this._activeRepoPath || '', file);
           if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
             const content = fs.readFileSync(fullPath, 'utf8');
             const lines = content.split('\n');

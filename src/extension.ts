@@ -487,8 +487,8 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           break;
         }
         case 'createWorktree': {
-          const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-          const defaultPath = workspaceRoot ? path.join(path.dirname(workspaceRoot), `${path.basename(workspaceRoot)}-wt-${data.hash.substring(0, 7)}`) : '';
+          const activeRepoPath = this._gitService.activeRepoPath;
+          const defaultPath = activeRepoPath ? path.join(path.dirname(activeRepoPath), `${path.basename(activeRepoPath)}-wt-${data.hash.substring(0, 7)}`) : '';
           const wtPath = await vscode.window.showInputBox({
             prompt: `Create Worktree for commit ${data.hash.substring(0, 7)}`,
             placeHolder: 'Enter local folder path for worktree',
@@ -573,8 +573,8 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           break;
         }
         case 'cherryPickWithWorktree': {
-          const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-          const defaultPath = workspaceRoot ? path.join(path.dirname(workspaceRoot), `${path.basename(workspaceRoot)}-wt-cp-${data.hash.substring(0, 7)}`) : '';
+          const activeRepoPath = this._gitService.activeRepoPath;
+          const defaultPath = activeRepoPath ? path.join(path.dirname(activeRepoPath), `${path.basename(activeRepoPath)}-wt-cp-${data.hash.substring(0, 7)}`) : '';
           const wtPath = await vscode.window.showInputBox({
             prompt: `Enter worktree folder path`,
             placeHolder: 'Enter local path',
@@ -761,6 +761,11 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           }
           break;
         }
+        case 'setActiveRepo': {
+          this._gitService.setActiveRepo(data.path);
+          this.refresh();
+          break;
+        }
       }
     });
   }
@@ -769,7 +774,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     console.log(`GitJBViewProvider: Refreshing with filter: ${this._currentFilter}...`);
     if (this._view) {
       try {
-        const [log, status, branches, tags, authors, currentUser, stashes, worktrees] = await Promise.all([
+        const [log, status, branches, tags, authors, currentUser, stashes, worktrees, repositories] = await Promise.all([
           this._gitService.getLog(this._currentFilter, this._currentAuthorFilter, this._currentSearchFilter, this._currentFileFilter),
           this._gitService.getStatus(),
           this._gitService.getBranches(),
@@ -777,7 +782,8 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           this._gitService.getAuthors(),
           this._gitService.getCurrentUser(),
           this._gitService.getStashes(),
-          this._gitService.getWorktrees()
+          this._gitService.getWorktrees(),
+          this._gitService.getRepositories()
         ]);
 
         console.log(`GitJBViewProvider: Sending update to webview. Log: ${log?.all?.length || 0} commits`);
@@ -794,6 +800,8 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
             fileFilter: this._currentFileFilter,
             stashes,
             worktrees,
+            repositories,
+            activeRepo: this._gitService.activeRepoPath,
             selectTab: this._pendingTabSelection
           }
         });

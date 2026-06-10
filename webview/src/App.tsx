@@ -440,9 +440,35 @@ function App() {
   const showAllItem = !query || 'all'.includes(query);
   const showHeadItem = !query || 'head'.includes(query);
 
+  const activeRepo = gitData?.repositories?.find(r => r.path === gitData.activeRepo);
+  const activeRepoName = activeRepo ? activeRepo.name : '';
+
   return (
-    <div className="container">
-      <div className="tabs">
+    <div className="container" style={{ display: 'flex', flexDirection: 'row' }}>
+      {gitData?.repositories && gitData.repositories.length > 1 && (
+        <div className="repo-sidebar">
+          <div className="repo-sidebar-header">
+            <span className="codicon codicon-repo" style={{ marginRight: '6px' }}></span>
+            Repositories
+          </div>
+          <div className="repo-sidebar-list">
+            {gitData.repositories.map(repo => (
+              <div 
+                key={repo.path}
+                className={`repo-item ${gitData.activeRepo === repo.path ? 'active' : ''}`}
+                onClick={() => vscode.postMessage({ type: 'setActiveRepo', path: repo.path })}
+                title={repo.path}
+              >
+                <span className={`codicon ${repo.isMain ? 'codicon-root-folder' : 'codicon-folder-library'}`} style={{ marginRight: '6px', fontSize: '14px' }}></span>
+                <span className="repo-name">{repo.name}</span>
+                {repo.isMain && <span className="repo-badge">Main</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100%' }}>
+        <div className="tabs">
         <div className={`tab ${activeTab === 'log' ? 'active' : ''}`} onClick={() => { setActiveTab('log'); setSelectedStashIndex(-1); }}>Log</div>
         <div className={`tab ${activeTab === 'local' ? 'active' : ''}`} onClick={() => { setActiveTab('local'); selection.clearSelection(); setIsCompareMode(false); setSelectedStashIndex(-1); }}>
           Local Changes {gitData?.status?.files && gitData.status.files.length > 0 && `(${gitData.status.files.length})`}
@@ -637,7 +663,7 @@ function App() {
                             onClick={() => setLocalExpanded(!localExpanded)}
                           >
                             <span className={`codicon ${(localExpanded || !!branchSearchQuery) ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} style={{ marginRight: '6px', fontSize: '10px' }}></span>
-                            Local Branches ({filteredLocalBranches.length})
+                            Local Branches {activeRepoName ? `(${activeRepoName})` : ''} ({filteredLocalBranches.length})
                           </div>
                           {(localExpanded || !!branchSearchQuery) && filteredLocalBranches.map((b) => (
                             <div 
@@ -660,7 +686,7 @@ function App() {
                             onClick={() => setRemoteExpanded(!remoteExpanded)}
                           >
                             <span className={`codicon ${(remoteExpanded || !!branchSearchQuery) ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} style={{ marginRight: '6px', fontSize: '10px' }}></span>
-                            Remote Branches ({filteredRemoteBranches.length})
+                            Remote Branches {activeRepoName ? `(${activeRepoName})` : ''} ({filteredRemoteBranches.length})
                           </div>
                           {(remoteExpanded || !!branchSearchQuery) && filteredRemoteBranches.map((b) => (
                             <div 
@@ -683,7 +709,7 @@ function App() {
                             onClick={() => setTagsExpanded(!tagsExpanded)}
                           >
                             <span className={`codicon ${(tagsExpanded || !!branchSearchQuery) ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} style={{ marginRight: '6px', fontSize: '10px' }}></span>
-                            Tags ({filteredTags.length})
+                            Tags {activeRepoName ? `(${activeRepoName})` : ''} ({filteredTags.length})
                           </div>
                           {(tagsExpanded || !!branchSearchQuery) && filteredTags.map((t) => (
                             <div 
@@ -1112,6 +1138,7 @@ function App() {
           y={hoveredCommit.y}
         />
       )}
+      </div>
     </div>
   );
 }

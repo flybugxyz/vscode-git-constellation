@@ -57,6 +57,12 @@ export interface Worktree {
   isMain: boolean;
 }
 
+export interface RepositoryInfo {
+  name: string;
+  path: string;
+  isMain: boolean;
+}
+
 export interface GitData {
   log: { all: Commit[] } | null;
   status: GitStatus | null;
@@ -67,4 +73,6 @@ export interface GitData {
   fileFilter: string;
   stashes?: Stash[];
   worktrees?: Worktree[];
+  repositories?: RepositoryInfo[];
+  activeRepo?: string;
 }
