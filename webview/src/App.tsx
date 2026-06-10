@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import './styles.css';
 import { GitGraph } from './GitGraph';
 import { ContextMenu, MenuEntry } from './ContextMenu';
@@ -88,7 +88,11 @@ function App() {
   const hoverTimeoutRef = React.useRef<any>(null);
   const mouseCoordsRef = React.useRef({ x: 0, y: 0 });
   const [lastFilesList, setLastFilesList] = useState<string[]>([]);
-
+  
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  const theadRef = useRef<HTMLTableSectionElement>(null);
+  const [actualRowHeight, setActualRowHeight] = useState(24);
+  const [actualTheadHeight, setActualTheadHeight] = useState(28);
 
   useEffect(() => {
     if (!gitData?.status?.files) return;
@@ -159,9 +163,34 @@ function App() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-
-
-
+  useEffect(() => {
+    if (!tbodyRef.current || !theadRef.current) return;
+    
+    let animationFrameId: number;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = requestAnimationFrame(() => {
+        if (theadRef.current) {
+          setActualTheadHeight(theadRef.current.getBoundingClientRect().height);
+        }
+        if (tbodyRef.current) {
+          const length = gitData?.log?.all?.length || 0;
+          if (length > 0) {
+            const tHeight = tbodyRef.current.getBoundingClientRect().height;
+            setActualRowHeight(tHeight / length);
+          }
+        }
+      });
+    });
+    
+    observer.observe(tbodyRef.current);
+    observer.observe(theadRef.current);
+    
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [gitData?.log?.all]);
 
   const handleCheckChange = (path: string, checked: boolean, filePaths: string[]) => {
     const newChecked = new Set(checkedFiles);
@@ -609,17 +638,17 @@ function App() {
               </div>
               <div className="table-container" style={{ flex: 1, position: 'relative' }}>
                 {gitData?.log?.all && (
-                  <div style={{ position: 'absolute', top: '28px', left: 0, pointerEvents: 'none', zIndex: 5 }}>
+                  <div style={{ position: 'absolute', top: `${actualTheadHeight}px`, left: 0, pointerEvents: 'none', zIndex: 5 }}>
                     <GitGraph 
                       commits={gitData.log.all} 
-                      rowHeight={24} 
+                      rowHeight={actualRowHeight} 
                       onWidthChange={setGraphWidth}
                       isLinear={!!fileFilter}
                     />
                   </div>
                 )}
                 <table style={{ tableLayout: 'fixed', width: '100%' }}>
-                  <thead>
+                  <thead ref={theadRef}>
                     <tr>
                       <th style={{ width: `${graphWidth}px` }}>Graph</th>
                       <th style={{ width: `${descWidth}px`, position: 'relative' }}>
@@ -663,7 +692,7 @@ function App() {
                       <th style={{ width: 'auto', borderRight: 'none' }}></th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody ref={tbodyRef}>
                     {gitData?.log?.all.map((commit: any, idx: number) => (
                       <tr 
                         key={commit.hash} 
