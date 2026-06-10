@@ -18,10 +18,12 @@ GitConstellation is a VS Code extension that brings the highly acclaimed Git vis
 *   **Local Changes Manager**: A dedicated tab to stage changes, write commit messages, and discard changes.
 *   **Stash Management**: A dedicated "Stashes" tab to view stashed changes, apply/pop/drop stashes.
 *   **Worktree Management**: A dedicated "Worktrees" tab to list and manage git worktrees (open in a new window, remove, or prune).
+*   **Submodule Management**: Integrated submodule branch sidebar to view and manage Git submodules effectively.
 *   **File History View**: View a file's history via a simplified linear graph by right-clicking it in either the VS Code Explorer or the editor context menu. The active panel tab automatically switches to the "Log" tab.
 *   **Multi-Select & Operations**: Select multiple commits with Ctrl+click or Shift+click to perform batch cherry-pick or squash contiguous commits on the current branch.
 *   **Commit Editing**: Amend the HEAD commit message or rewrite older commit messages from the context menu.
-*   **Branch & Tag Switcher**: Easily search and filter commits by tags, local/remote branches, and pin branches.
+*   **Branch & Tag Switcher**: Easily search and filter commits by tags, local/remote branches, and pin branches with interactive search fields.
+*   **Performance & UI**: Loading animations for Git operations and a configurable max commit list limit.
 *   **Native Look & Feel**: Uses VS Code's standard Codicons and theme-aware styling for a seamless experience.
 
 ### 🤖 AI-Powered Features
@@ -68,10 +70,12 @@ GitConstellation 是一款 VS Code 插件，旨在将深受好评的 JetBrains I
 *   **本地更改管理**：专门的标签页用于查看/撤销本地更改、暂存修改，支持一键提交或提交并推送。
 *   **Stash 暂存管理**：独立的 "Stashes" 标签页，用于查看所有 stash 列表、应用/弹出/丢弃 stash，以及支持清空所有 stash。
 *   **Worktree 工作树管理**：独立的 "Worktrees" 标签页，列出当前工作树并支持一键在新窗口打开、删除或修剪 (prune) 工作树。
+*   **Submodule 子模块管理**：集成的子模块分支侧边栏，支持高效查看和管理 Git 子模块。
 *   **文件历史视图**：在 VS Code 资源管理器或编辑器右键菜单中选择“View File History (GitConstellation)”即可查看该文件的 Git 历史，并且插件面板会自动切换到“Log”标签页。
 *   **多选与批量操作**：支持按 Ctrl/Shift 键多选提交记录，支持批量 Cherry-pick 及压缩（Squash）当前分支上的连续提交。
 *   **编辑提交信息**：支持直接在右键菜单中修改（Amend）HEAD 提交信息，或者重写历史记录以修改旧提交的提交信息。
-*   **分支与标签过滤**：增强的下拉筛选菜单，支持按本地/远程分支、标签（Tag）过滤提交列表，并支持置顶（Pin）常用分支。
+*   **分支与标签过滤**：增强的下拉筛选菜单，支持按本地/远程分支、标签（Tag）过滤提交列表，并支持置顶（Pin）常用分支，提供交互式的搜索输入框。
+*   **性能与交互**：支持 Git 操作加载动画，以及可配置的最大提交列表数量限制。
 *   **原生集成**：使用 VS Code 标准的 Codicons 图标库，并适配编辑器主题，确保完美的视觉集成。
 
 ### 🤖 AI 智能辅助功能

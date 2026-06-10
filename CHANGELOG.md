@@ -2,6 +2,17 @@
 
 All notable changes to the **GitConstellation** extension will be documented in this file.
 
+## [1.0.3] - 2026-06-10
+
+### Added
+- **Submodule Management**: Added support for managing Git submodules, including submodule branch sidebar integration.
+- **Searchable Branches and Tags**: Implement search functionality for the branch and tag filter popups in the log view.
+- **Loading Animations**: Added loading animations to Git operations for better user feedback.
+- **Configurable Commit Limit**: Increased the flexibility of the commit list limit.
+
+### Fixed
+- **GitGraph Rendering**: Fixed GitGraph rendering alignment issues.
+
 ## [1.0.2] - 2026-06-09
 
 ### Added
