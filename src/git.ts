@@ -103,7 +103,7 @@ export class GitService {
     return repos;
   }
 
-  public async getLog(branch: string = 'ALL', author: string = 'ALL', search: string = '', filePath: string = ''): Promise<any | undefined> {
+  public async getLog(branch: string = 'ALL', author: string = 'ALL', search: string = '', filePath: string = '', skip: number = 0, maxCount: number = 100): Promise<any | undefined> {
     if (!this._git) {
       console.log('GitService: No git instance available');
       return undefined;
@@ -153,9 +153,14 @@ export class GitService {
       };
 
       const args = [
-        'log',
-        '--max-count=100'
+        'log'
       ];
+      if (skip > 0) {
+        args.push(`--skip=${skip}`);
+      }
+      if (maxCount > 0) {
+        args.push(`--max-count=${maxCount}`);
+      }
       if (branch === 'ALL') {
         args.push('--all');
       } else if (branch === 'HEAD') {

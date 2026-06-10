@@ -766,6 +766,27 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           this.refresh();
           break;
         }
+        case 'loadMoreCommits': {
+          const skip = data.skip || 0;
+          const maxCount = 100;
+          try {
+            const log = await this._gitService.getLog(
+              this._currentFilter,
+              this._currentAuthorFilter,
+              this._currentSearchFilter,
+              this._currentFileFilter,
+              skip,
+              maxCount
+            );
+            this._view?.webview.postMessage({
+              type: 'appendCommits',
+              payload: { log }
+            });
+          } catch (err) {
+            console.error('GitJBViewProvider: Error loading more commits:', err);
+          }
+          break;
+        }
       }
     });
   }

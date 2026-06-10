@@ -57,6 +57,8 @@ function App() {
     }
   });
   const [activeTab, setActiveTab] = useState<'log' | 'local' | 'stashes' | 'worktrees'>('log');
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [hasMoreCommits, setHasMoreCommits] = useState(true);
   const [commitMessage, setCommitMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showBranches, setShowBranches] = useState(false);
@@ -137,6 +139,8 @@ function App() {
         case 'update':
           const payload = message.payload;
           setGitData(payload);
+          setHasMoreCommits(true);
+          setIsFetchingMore(false);
           if (payload.fileFilter !== undefined) {
             setFileFilter(payload.fileFilter);
           }
@@ -145,6 +149,27 @@ function App() {
           }
           if (payload.log?.all) {
             selection.clampIndices(payload.log.all.length);
+          }
+          break;
+        case 'appendCommits':
+          setIsFetchingMore(false);
+          if (message.payload?.log?.all) {
+            const newCommits = message.payload.log.all;
+            if (newCommits.length < 100) {
+              setHasMoreCommits(false);
+            }
+            setGitData(prev => {
+              if (!prev || !prev.log) return prev;
+              return {
+                ...prev,
+                log: {
+                  ...prev.log,
+                  all: [...prev.log.all, ...newCommits]
+                }
+              };
+            });
+          } else {
+            setHasMoreCommits(false);
           }
           break;
         case 'selectTab':
@@ -443,6 +468,16 @@ function App() {
   const activeRepo = gitData?.repositories?.find(r => r.path === gitData.activeRepo);
   const activeRepoName = activeRepo ? activeRepo.name : '';
 
+  const handleTableScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target.scrollHeight - target.scrollTop - target.clientHeight < 50) {
+      if (!isFetchingMore && hasMoreCommits) {
+        setIsFetchingMore(true);
+        vscode.postMessage({ type: 'loadMoreCommits', skip: gitData?.log?.all?.length || 0 });
+      }
+    }
+  };
+
   return (
     <div className="container" style={{ display: 'flex', flexDirection: 'row' }}>
       {gitData?.repositories && gitData.repositories.length > 1 && (
@@ -728,7 +763,7 @@ function App() {
                   </div>
                 )}
               </div>
-              <div className="table-container" style={{ flex: 1, position: 'relative' }}>
+              <div className="table-container" style={{ flex: 1, position: 'relative' }} onScroll={handleTableScroll}>
                 {gitData?.log?.all && (
                   <div style={{ position: 'absolute', top: `${actualTheadHeight}px`, left: 0, pointerEvents: 'none', zIndex: 5 }}>
                     <GitGraph 
@@ -819,6 +854,12 @@ function App() {
                     ))}
                   </tbody>
                 </table>
+                {isFetchingMore && (
+                  <div className="loading-row">
+                    <div className="loading-spinner"></div>
+                    Loading more commits...
+                  </div>
+                )}
               </div>
             </div>
             

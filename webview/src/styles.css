@@ -930,3 +930,29 @@ body.resizing-row * {
   margin-left: 6px;
   font-weight: bold;
 }
+
+/* Loading Spinner */
+.loading-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+
+.loading-spinner {
+  border: 2px solid transparent;
+  border-top: 2px solid var(--vscode-button-background);
+  border-right: 2px solid var(--vscode-button-background);
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
