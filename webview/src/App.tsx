@@ -58,6 +58,10 @@ function App() {
   });
   const [activeTab, setActiveTab] = useState<'log' | 'local' | 'stashes' | 'worktrees'>('log');
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
+  const [commitActionState, setCommitActionState] = useState<'commit' | 'commitAndPush' | null>(null);
   const [hasMoreCommits, setHasMoreCommits] = useState(true);
   const [commitMessage, setCommitMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -141,6 +145,10 @@ function App() {
           setGitData(payload);
           setHasMoreCommits(true);
           setIsFetchingMore(false);
+          setIsFetching(false);
+          setIsPulling(false);
+          setIsPushing(false);
+          setCommitActionState(null);
           if (payload.fileFilter !== undefined) {
             setFileFilter(payload.fileFilter);
           }
@@ -582,23 +590,26 @@ function App() {
                   <button 
                     className="toolbar-button" 
                     title="Refresh / Fetch Remote"
-                    onClick={() => vscode.postMessage({ type: 'fetch' })}
+                    onClick={() => { setIsFetching(true); vscode.postMessage({ type: 'fetch' }); }}
+                    disabled={isFetching}
                   >
-                    <span className="codicon codicon-refresh"></span>
+                    <span className={`codicon ${isFetching ? 'codicon-loading codicon-modifier-spin' : 'codicon-refresh'}`}></span>
                   </button>
                   <button 
                     className="toolbar-button" 
                     title="Pull"
-                    onClick={() => vscode.postMessage({ type: 'pull' })}
+                    onClick={() => { setIsPulling(true); vscode.postMessage({ type: 'pull' }); }}
+                    disabled={isPulling}
                   >
-                    <span className="codicon codicon-cloud-download"></span>
+                    <span className={`codicon ${isPulling ? 'codicon-loading codicon-modifier-spin' : 'codicon-cloud-download'}`}></span>
                   </button>
                   <button 
                     className="toolbar-button" 
                     title="Push"
-                    onClick={() => vscode.postMessage({ type: 'push' })}
+                    onClick={() => { setIsPushing(true); vscode.postMessage({ type: 'push' }); }}
+                    disabled={isPushing}
                   >
-                    <span className="codicon codicon-cloud-upload"></span>
+                    <span className={`codicon ${isPushing ? 'codicon-loading codicon-modifier-spin' : 'codicon-cloud-upload'}`}></span>
                   </button>
                   <button 
                     className="toolbar-button" 
@@ -1115,9 +1126,11 @@ function App() {
             onFileClick={handleLocalFileClick}
             onDiscard={handleDiscard}
             onCommit={(message, files) => {
+              setCommitActionState('commit');
               vscode.postMessage({ type: 'commit', message, files });
             }}
             onCommitAndPush={(message, files, force) => {
+              setCommitActionState('commitAndPush');
               vscode.postMessage({ type: 'commitAndPush', message, files, force });
             }}
             onGenerateAI={(files) => {
@@ -1129,6 +1142,7 @@ function App() {
             commitMessage={commitMessage}
             onCommitMessageChange={setCommitMessage}
             onGenerateResult={setCommitMessage}
+            commitActionState={commitActionState}
           />
         )}
       </div>

@@ -27,6 +27,7 @@ interface LocalChangesPanelProps {
   commitMessage: string;
   onCommitMessageChange: (msg: string) => void;
   onGenerateResult: (msg: string) => void;
+  commitActionState?: 'commit' | 'commitAndPush' | null;
 }
 
 export function LocalChangesPanel({
@@ -43,6 +44,7 @@ export function LocalChangesPanel({
   isGenerating,
   commitMessage,
   onCommitMessageChange,
+  commitActionState,
 }: LocalChangesPanelProps) {
   const [forcePush, setForcePush] = useState(false);
 
@@ -111,16 +113,20 @@ export function LocalChangesPanel({
         <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: '8px' }}>
           <button 
             onClick={handleCommit} 
-            disabled={!commitMessage.trim() || checkedFiles.size === 0}
+            disabled={!commitMessage.trim() || checkedFiles.size === 0 || commitActionState !== null}
           >
-            Commit
+            {commitActionState === 'commit' ? (
+              <><span className="codicon codicon-loading codicon-modifier-spin" style={{ marginRight: '4px' }}></span>Committing...</>
+            ) : 'Commit'}
           </button>
           <button 
             className="button-secondary"
             onClick={handleCommitAndPush} 
-            disabled={!commitMessage.trim() || checkedFiles.size === 0}
+            disabled={!commitMessage.trim() || checkedFiles.size === 0 || commitActionState !== null}
           >
-            Commit and Push
+            {commitActionState === 'commitAndPush' ? (
+              <><span className="codicon codicon-loading codicon-modifier-spin" style={{ marginRight: '4px' }}></span>Pushing...</>
+            ) : 'Commit and Push'}
           </button>
           <label style={{ marginLeft: '4px', display: 'inline-flex', alignItems: 'center', fontSize: '11px', cursor: 'pointer', userSelect: 'none', color: 'var(--vscode-descriptionForeground)' }}>
             <input 
