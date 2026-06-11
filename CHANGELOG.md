@@ -2,6 +2,17 @@
 
 All notable changes to the **GitConstellation** extension will be documented in this file.
 
+## [1.0.4] - 2026-06-11
+
+### Added
+- **Marketplace Discoverability**: Added `keywords` and `categories` tags to `package.json`.
+- **Active Branch Highlighting**: Visually highlight the currently active Git branch in the UI.
+
+### Changed
+- **AI Commit Prompt**: Updated the default system prompt for the AI assistant to more strictly follow the Conventional Commits specification.
+- **Extension Icon Theme**: Updated the extension icon theme.
+- **Performance**: Optimized the Local Changes panel for better rendering and performance.
+
 ## [1.0.3] - 2026-06-10
 
 ### Added
