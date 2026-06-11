@@ -15,3 +15,5 @@ GEMINI.md
 *.vsix
 *.js.map
 dist/extension.js.map
+.agents
+.antigravity

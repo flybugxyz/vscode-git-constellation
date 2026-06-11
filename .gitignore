@@ -4,4 +4,6 @@ out
 *.vsix
 .vscode-test
 dist-webview
-
+.vscode
+.agents
+.antigravity
