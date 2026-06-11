@@ -108,6 +108,13 @@ GitConstellation 集成了对任何 OpenAI 兼容 API（例如 OpenAI、DeepSeek
 
 ---
 
+## Acknowledgements | 致谢
+
+*   **Icons**: File icons are powered by [Antigravity Icons Supercharged](https://github.com/DavidBabel/antigravity-icons-supercharged) (Blue version) by David Babel.
+*   **图标**: 文件图标使用了由 David Babel 制作的 [Antigravity Icons Supercharged](https://github.com/DavidBabel/antigravity-icons-supercharged)（蓝色版本）。
+
+---
+
 ## License | 开源协议
 
 This project is licensed under the [MIT License](LICENSE).

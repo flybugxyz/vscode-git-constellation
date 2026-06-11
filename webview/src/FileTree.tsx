@@ -53,43 +53,51 @@ const IndeterminateCheckbox: React.FC<{
   );
 };
 
-const getFileIconClass = (fileName: string): string => {
+const getFileIconPath = (fileName: string, isExpanded: boolean = false, isFile: boolean = true): string => {
+  if (!isFile) {
+    return isExpanded ? 'antigravity-icons/folders/folder-open.svg' : 'antigravity-icons/folders/folder.svg';
+  }
+
   const ext = fileName.split('.').pop()?.toLowerCase();
+  let iconName = 'document.svg';
+
   switch (ext) {
-    case 'ts':
-    case 'tsx':
-    case 'js':
-    case 'jsx':
-    case 'py':
-    case 'go':
-    case 'rs':
-    case 'java':
-    case 'c':
-    case 'cpp':
-    case 'h': return 'codicon-file-code';
-    case 'json': return 'codicon-json';
-    case 'md': return 'codicon-markdown';
+    case 'ts': iconName = 'ts.svg'; break;
+    case 'tsx': iconName = 'react-ts.svg'; break;
+    case 'js': iconName = 'js.svg'; break;
+    case 'jsx': iconName = 'react.svg'; break;
+    case 'py': iconName = 'python.svg'; break;
+    case 'go': iconName = 'go.svg'; break;
+    case 'rs': iconName = 'rust.svg'; break;
+    case 'java': iconName = 'java.svg'; break;
+    case 'c': iconName = 'c.svg'; break;
+    case 'cpp': iconName = 'cplus.svg'; break;
+    case 'h': iconName = 'h.svg'; break;
+    case 'json': iconName = 'brackets-yellow.svg'; break;
+    case 'md': iconName = 'markdown.svg'; break;
     case 'css':
     case 'scss':
-    case 'less': return 'codicon-symbol-color';
-    case 'html': return 'codicon-globe';
+    case 'less': iconName = 'code-blue.svg'; break;
+    case 'html': iconName = 'code-orange.svg'; break;
     case 'png':
     case 'jpg':
     case 'jpeg':
     case 'gif':
-    case 'svg': return 'codicon-file-media';
+    case 'svg': iconName = 'image.svg'; break;
     case 'yaml':
-    case 'yml':
-    case 'xml': return 'codicon-settings';
+    case 'yml': iconName = 'yaml.svg'; break;
+    case 'xml': iconName = 'xml.svg'; break;
     case 'sh':
     case 'bash':
-    case 'bat': return 'codicon-terminal';
-    case 'pdf': return 'codicon-file-pdf';
+    case 'bat': iconName = 'shell.svg'; break;
+    case 'pdf': iconName = 'pdf.svg'; break;
     case 'zip':
     case 'tar':
-    case 'gz': return 'codicon-file-zip';
-    default: return 'codicon-file';
+    case 'gz': iconName = 'archive.svg'; break;
+    default: iconName = 'document.svg'; break;
   }
+
+  return `antigravity-icons/files/${iconName}`;
 };
 
 export const FileTree: React.FC<FileTreeProps> = ({ 
@@ -223,8 +231,12 @@ export const FileTree: React.FC<FileTreeProps> = ({
                 }}
               />
             )}
-            <span className={`tree-icon codicon ${node.isFile ? getFileIconClass(node.name) : (isExpanded ? 'codicon-folder-opened' : 'codicon-folder')}`}>
-            </span>
+            <img 
+              className="tree-icon" 
+              src={getFileIconPath(node.name, isExpanded, node.isFile)} 
+              alt="icon" 
+              style={{ width: '16px', height: '16px' }}
+            />
             <span className="tree-name">{node.name}</span>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
               {onDiscard && (

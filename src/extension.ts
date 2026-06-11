@@ -264,6 +264,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
+    const webviewUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'dist-webview'));
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this._extensionUri, 'dist-webview', 'assets', 'main.js')
     );
@@ -276,7 +277,8 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
 			<head>
 				<meta charset="UTF-8">
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource} vscode-resource:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'unsafe-eval';">
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} vscode-resource: https: data:; font-src ${webview.cspSource} vscode-resource:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'unsafe-eval';">
+				<base href="${webviewUri}/">
 				<link href="${styleUri}" rel="stylesheet">
 				<title>GitConstellation</title>
 			</head>
