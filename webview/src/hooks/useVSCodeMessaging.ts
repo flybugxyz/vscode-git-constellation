@@ -20,7 +20,9 @@ export function useVSCodeMessaging(callbacks: {
 
   useEffect(() => {
     vscode.postMessage({ type: 'ready' });
+  }, [vscode]);
 
+  useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
       switch (message.type) {
