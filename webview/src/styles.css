@@ -410,13 +410,33 @@ input[type="checkbox"] {
   padding: 4px 12px;
   cursor: pointer;
   font-size: 11px;
+  display: flex;
+  align-items: center;
 }
 
-.branch-item:hover {
+.branch-item-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.current-branch-badge {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+.branch-item:hover,
+.branch-item.context-menu-active {
   background-color: var(--jb-hover);
 }
 
-.branch-item.current {
+.branch-item.current .branch-item-name {
   font-weight: bold;
   color: var(--vscode-button-background);
 }

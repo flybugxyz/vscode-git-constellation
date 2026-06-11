@@ -93,7 +93,28 @@ export function LogTab({
 
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', position: 'relative' }}>
+        {isFetching && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 100,
+            backgroundColor: 'var(--vscode-editorWidget-background)',
+            padding: '12px 24px',
+            borderRadius: '6px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
+            pointerEvents: 'none'
+          }}>
+            <span className="codicon codicon-loading codicon-modifier-spin" style={{ fontSize: '20px', color: 'var(--vscode-button-background)' }}></span>
+            <span style={{ fontSize: '13px', color: 'var(--vscode-foreground)' }}>Loading commits...</span>
+          </div>
+        )}
         <div className="header" style={{ justifyContent: 'space-between', position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <input
@@ -207,17 +228,18 @@ export function LogTab({
           </div>
         </div>
         <div className="table-container" style={{ flex: 1, position: 'relative' }} onScroll={handleTableScroll}>
-          {commitsList.length > 0 && (
-            <div style={{ position: 'absolute', top: `${actualTheadHeight}px`, left: 0, pointerEvents: 'none', zIndex: 5 }}>
-              <GitGraph 
-                commits={commitsList} 
-                rowHeight={actualRowHeight} 
-                onWidthChange={setGraphWidth}
-                isLinear={!!fileFilter}
-              />
-            </div>
-          )}
-          <table style={{ tableLayout: 'fixed', width: '100%' }}>
+          <div style={{ opacity: isFetching ? 0.3 : 1, transition: 'opacity 0.2s ease', pointerEvents: isFetching ? 'none' : 'auto' }}>
+            {commitsList.length > 0 && (
+              <div style={{ position: 'absolute', top: `${actualTheadHeight}px`, left: 0, pointerEvents: 'none', zIndex: 5 }}>
+                <GitGraph 
+                  commits={commitsList} 
+                  rowHeight={actualRowHeight} 
+                  onWidthChange={setGraphWidth}
+                  isLinear={!!fileFilter}
+                />
+              </div>
+            )}
+            <table style={{ tableLayout: 'fixed', width: '100%' }}>
             <thead ref={theadRef}>
               <tr>
                 <th style={{ width: `${graphWidth}px` }}>Graph</th>
@@ -289,6 +311,7 @@ export function LogTab({
               ))}
             </tbody>
           </table>
+          </div>
           {isFetchingMore && (
             <div className="loading-row">
               <div className="loading-spinner"></div>

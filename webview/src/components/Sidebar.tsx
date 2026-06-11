@@ -1,13 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { useGitData } from '../GitDataContext';
-import { MenuActionData } from '../types';
+import { MenuActionData, MenuState } from '../types';
 
 interface SidebarProps {
   openContextMenu: (e: React.MouseEvent, data: MenuActionData) => void;
+  menuState: MenuState | null;
 }
 
-export function Sidebar({ openContextMenu }: SidebarProps) {
-  const { gitData, vscode, filterBranch, setFilterBranch, pinnedBranches } = useGitData();
+export function Sidebar({ openContextMenu, menuState }: SidebarProps) {
+  const { gitData, vscode, filterBranch, setFilterBranch, pinnedBranches, setIsFetching } = useGitData();
   
   const [branchSearchQuery, setBranchSearchQuery] = useState('');
   const [localExpanded, setLocalExpanded] = useState(true);
@@ -17,6 +18,7 @@ export function Sidebar({ openContextMenu }: SidebarProps) {
 
   const handleFilter = (branch: string) => {
     setFilterBranch(branch);
+    setIsFetching(true);
     vscode.postMessage({ type: 'setFilter', branch });
   };
 
@@ -113,8 +115,8 @@ export function Sidebar({ openContextMenu }: SidebarProps) {
                 className={`branch-item ${filterBranch === 'ALL' ? 'active-filter' : ''}`}
                 onClick={() => handleFilter('ALL')}
               >
-                {filterBranch === 'ALL' && <span style={{ marginRight: '6px' }}>✓</span>}
-                ALL
+                <span style={{ width: '14px', flexShrink: 0, marginRight: '6px' }}>{filterBranch === 'ALL' ? '✓' : ''}</span>
+                <span className="branch-item-name">ALL</span>
               </div>
             )}
             {showHeadItem && (
@@ -122,8 +124,8 @@ export function Sidebar({ openContextMenu }: SidebarProps) {
                 className={`branch-item ${filterBranch === 'HEAD' ? 'active-filter' : ''}`}
                 onClick={() => handleFilter('HEAD')}
               >
-                {filterBranch === 'HEAD' && <span style={{ marginRight: '6px' }}>✓</span>}
-                HEAD
+                <span style={{ width: '14px', flexShrink: 0, marginRight: '6px' }}>{filterBranch === 'HEAD' ? '✓' : ''}</span>
+                <span className="branch-item-name">HEAD</span>
               </div>
             )}
             
@@ -136,15 +138,18 @@ export function Sidebar({ openContextMenu }: SidebarProps) {
                 {filteredPinnedBranches.map((bName) => {
                   const isRemote = bName.startsWith('remotes/');
                   const displayName = isRemote ? bName.replace(/^remotes\//, '') : bName;
+                  const isCurrent = bName === gitData?.branches?.current;
+                  const isContextMenuActive = menuState?.kind === 'branch' && menuState.branch === bName && menuState.isRemote === isRemote;
                   return (
                     <div 
                       key={`pinned-${bName}`} 
-                      className={`branch-item nested ${bName === filterBranch ? 'active-filter' : ''}`}
+                      className={`branch-item nested ${bName === filterBranch ? 'active-filter' : ''} ${isCurrent ? 'current' : ''} ${isContextMenuActive ? 'context-menu-active' : ''}`}
                       onClick={() => handleFilter(bName)}
                       onContextMenu={(e) => openContextMenu(e, { kind: 'branch', branch: bName, isRemote })}
                     >
-                      {bName === filterBranch && <span style={{ marginRight: '6px' }}>✓</span>}
-                      {displayName}
+                      <span style={{ width: '14px', flexShrink: 0, marginRight: '6px' }}>{bName === filterBranch ? '✓' : ''}</span>
+                      <span className="branch-item-name" title={displayName}>{displayName}</span>
+                      {isCurrent && <span className="current-branch-badge">Current</span>}
                     </div>
                   );
                 })}
@@ -160,17 +165,21 @@ export function Sidebar({ openContextMenu }: SidebarProps) {
                   <span className={`codicon ${(localExpanded || !!branchSearchQuery) ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} style={{ marginRight: '6px', fontSize: '10px' }}></span>
                   Local Branches {activeRepoName ? `(${activeRepoName})` : ''} ({filteredLocalBranches.length})
                 </div>
-                {(localExpanded || !!branchSearchQuery) && filteredLocalBranches.map((b) => (
+                {(localExpanded || !!branchSearchQuery) && filteredLocalBranches.map((b) => {
+                  const isContextMenuActive = menuState?.kind === 'branch' && menuState.branch === b.name && !menuState.isRemote;
+                  return (
                   <div 
                     key={b.name} 
-                    className={`branch-item nested ${b.name === filterBranch ? 'active-filter' : ''} ${b.name === gitData?.branches?.current ? 'current' : ''}`}
+                    className={`branch-item nested ${b.name === filterBranch ? 'active-filter' : ''} ${b.name === gitData?.branches?.current ? 'current' : ''} ${isContextMenuActive ? 'context-menu-active' : ''}`}
                     onClick={() => handleFilter(b.name)}
                     onContextMenu={(e) => openContextMenu(e, { kind: 'branch', branch: b.name, isRemote: false })}
                   >
-                    {b.name === filterBranch && <span style={{ marginRight: '6px' }}>✓</span>}
-                    {b.displayName}
+                    <span style={{ width: '14px', flexShrink: 0, marginRight: '6px' }}>{b.name === filterBranch ? '✓' : ''}</span>
+                    <span className="branch-item-name" title={b.displayName}>{b.displayName}</span>
+                    {b.name === gitData?.branches?.current && <span className="current-branch-badge">Current</span>}
                   </div>
-                ))}
+                  );
+                })}
               </>
             )}
 
@@ -183,17 +192,21 @@ export function Sidebar({ openContextMenu }: SidebarProps) {
                   <span className={`codicon ${(remoteExpanded || !!branchSearchQuery) ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} style={{ marginRight: '6px', fontSize: '10px' }}></span>
                   Remote Branches {activeRepoName ? `(${activeRepoName})` : ''} ({filteredRemoteBranches.length})
                 </div>
-                {(remoteExpanded || !!branchSearchQuery) && filteredRemoteBranches.map((b) => (
+                {(remoteExpanded || !!branchSearchQuery) && filteredRemoteBranches.map((b) => {
+                  const isContextMenuActive = menuState?.kind === 'branch' && menuState.branch === b.name && menuState.isRemote;
+                  return (
                   <div 
                     key={b.name} 
-                    className={`branch-item nested ${b.name === filterBranch ? 'active-filter' : ''}`}
+                    className={`branch-item nested ${b.name === filterBranch ? 'active-filter' : ''} ${b.name === gitData?.branches?.current ? 'current' : ''} ${isContextMenuActive ? 'context-menu-active' : ''}`}
                     onClick={() => handleFilter(b.name)}
                     onContextMenu={(e) => openContextMenu(e, { kind: 'branch', branch: b.name, isRemote: true })}
                   >
-                    {b.name === filterBranch && <span style={{ marginRight: '6px' }}>✓</span>}
-                    {b.displayName}
+                    <span style={{ width: '14px', flexShrink: 0, marginRight: '6px' }}>{b.name === filterBranch ? '✓' : ''}</span>
+                    <span className="branch-item-name" title={b.displayName}>{b.displayName}</span>
+                    {b.name === gitData?.branches?.current && <span className="current-branch-badge">Current</span>}
                   </div>
-                ))}
+                  );
+                })}
               </>
             )}
 
@@ -206,17 +219,20 @@ export function Sidebar({ openContextMenu }: SidebarProps) {
                   <span className={`codicon ${(tagsExpanded || !!branchSearchQuery) ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} style={{ marginRight: '6px', fontSize: '10px' }}></span>
                   Tags {activeRepoName ? `(${activeRepoName})` : ''} ({filteredTags.length})
                 </div>
-                {(tagsExpanded || !!branchSearchQuery) && filteredTags.map((t) => (
+                {(tagsExpanded || !!branchSearchQuery) && filteredTags.map((t) => {
+                  const isContextMenuActive = menuState?.kind === 'tag' && menuState.tag === t;
+                  return (
                   <div 
                     key={t} 
-                    className={`branch-item nested ${t === filterBranch ? 'active-filter' : ''}`}
+                    className={`branch-item nested ${t === filterBranch ? 'active-filter' : ''} ${isContextMenuActive ? 'context-menu-active' : ''}`}
                     onClick={() => handleFilter(t)}
                     onContextMenu={(e) => openContextMenu(e, { kind: 'tag', tag: t })}
                   >
-                    {t === filterBranch && <span style={{ marginRight: '6px' }}>✓</span>}
-                    {t}
+                    <span style={{ width: '14px', flexShrink: 0, marginRight: '6px' }}>{t === filterBranch ? '✓' : ''}</span>
+                    <span className="branch-item-name" title={t}>{t}</span>
                   </div>
-                ))}
+                  );
+                })}
               </>
             )}
           </div>

@@ -30,7 +30,7 @@ function AppContent() {
   return (
     <ErrorBoundary vscode={vscode}>
       <div className="app-container" style={{ display: 'flex', flexDirection: 'row', height: '100vh', width: '100vw', overflow: 'hidden' }}>
-        <Sidebar openContextMenu={openContextMenu} />
+        <Sidebar openContextMenu={openContextMenu} menuState={menuState} />
         <MainContent 
           selection={selection}
           menuState={menuState}
