@@ -76,3 +76,10 @@ export interface GitData {
   repositories?: RepositoryInfo[];
   activeRepo?: string;
 }
+
+export const FILTER_ALL = 'ALL';
+
+export interface WebviewMessage {
+  type: string;
+  [key: string]: any;
+}

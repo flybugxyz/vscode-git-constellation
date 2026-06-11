@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import './styles.css';
 import { ContextMenu, MenuEntry } from './ContextMenu';
 import { CommitHoverPopup } from './CommitHoverPopup';
-import { Commit, GitStatusFile, GitData, Stash } from './types';
+import { Commit, GitStatusFile, GitData, Stash, FILTER_ALL } from './types';
 import {
   dispatchMenuAction,
   getCommitMenuItems as buildCommitMenuItems,
@@ -67,8 +67,8 @@ function App() {
   const [hasMoreCommits, setHasMoreCommits] = useState(true);
   const [commitMessage, setCommitMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [filterBranch, setFilterBranch] = useState<string>('ALL');
-  const [filterAuthor, setFilterAuthor] = useState<string>('ALL');
+  const [filterBranch, setFilterBranch] = useState<string>(FILTER_ALL);
+  const [filterAuthor, setFilterAuthor] = useState<string>(FILTER_ALL);
   const [authorPopupPos, setAuthorPopupPos] = useState<{ x: number, y: number } | null>(null);
 
   const [branchSearchQuery, setBranchSearchQuery] = useState<string>('');
@@ -106,13 +106,17 @@ function App() {
 
   useEffect(() => {
     if (!gitData?.status?.files) return;
-    const currentPaths = gitData.status.files.map((f: GitStatusFile) => f.path);
     
-    // Compare currentPaths with lastFilesList
-    const added = currentPaths.filter((p: string) => !lastFilesList.includes(p));
-    const removed = lastFilesList.filter((p: string) => !currentPaths.includes(p));
+    // Instead of doing expensive mapping and filtering on every re-render,
+    // we convert the new paths into a string and do a shallow check first.
+    const newPathsStr = gitData.status.files.map((f: GitStatusFile) => f.path).join('|');
+    const oldPathsStr = lastFilesList.join('|');
     
-    if (added.length > 0 || removed.length > 0) {
+    if (newPathsStr !== oldPathsStr) {
+      const currentPaths = gitData.status.files.map((f: GitStatusFile) => f.path);
+      const added = currentPaths.filter((p: string) => !lastFilesList.includes(p));
+      const removed = lastFilesList.filter((p: string) => !currentPaths.includes(p));
+      
       setCheckedFiles(prevChecked => {
         const newChecked = new Set(prevChecked);
         removed.forEach((p: string) => newChecked.delete(p));
@@ -231,17 +235,19 @@ function App() {
     // CR-001: Safe dependencies mapping
   }, [gitData?.log?.all]);
 
-  const handleCheckChange = (path: string, checked: boolean, filePaths: string[]) => {
-    const newChecked = new Set(checkedFiles);
-    filePaths.forEach(p => {
-      if (checked) {
-        newChecked.add(p);
-      } else {
-        newChecked.delete(p);
-      }
+  const handleCheckChange = React.useCallback((path: string, checked: boolean, filePaths: string[]) => {
+    setCheckedFiles(prevChecked => {
+      const newChecked = new Set(prevChecked);
+      filePaths.forEach(p => {
+        if (checked) {
+          newChecked.add(p);
+        } else {
+          newChecked.delete(p);
+        }
+      });
+      return newChecked;
     });
-    setCheckedFiles(newChecked);
-  };
+  }, []);
 
   const handleLocalFileClick = (filePath: string) => {
     vscode.postMessage({ type: 'openDiff', hash: '', path: filePath });
@@ -283,12 +289,12 @@ function App() {
     }
   };
 
-  const handleFilterAuthor = (author: string) => {
+  const handleFilterAuthor = React.useCallback((author: string) => {
     setFilterAuthor(author);
     selection.clearSelection();
     vscode.postMessage({ type: 'setAuthorFilter', author });
     setAuthorPopupPos(null);
-  };
+  }, [selection]);
 
   const handleCloseMenu = React.useCallback(() => setMenuState(null), []);
 

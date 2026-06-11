@@ -1,7 +1,7 @@
 import React from 'react';
 import { GitGraph } from '../GitGraph';
 import { CommitDetailsSidePane } from '../CommitDetailsSidePane';
-import { GitData } from '../types';
+import { GitData, Commit } from '../types';
 import { formatDate } from '../utils';
 
 interface LogTabProps {
@@ -36,7 +36,7 @@ interface LogTabProps {
   theadRef: React.RefObject<HTMLTableSectionElement | null>;
   tbodyRef: React.RefObject<HTMLTableSectionElement | null>;
   selection: any;
-  handleRowMouseEnter: (e: React.MouseEvent, commit: any) => void;
+  handleRowMouseEnter: (e: React.MouseEvent, commit: Commit) => void;
   handleRowMouseMove: (e: React.MouseEvent) => void;
   handleRowMouseLeave: () => void;
   handleTableScroll: (e: React.UIEvent<HTMLDivElement>) => void;
@@ -263,7 +263,7 @@ export function LogTab({
               </tr>
             </thead>
             <tbody ref={tbodyRef}>
-              {commitsList.map((commit: any, idx: number) => (
+              {commitsList.map((commit: Commit, idx: number) => (
                 <tr 
                   key={commit.hash} 
                   className={selection.selectedIndices.includes(idx) ? 'selected' : ''}

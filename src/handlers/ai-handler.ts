@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import { GitService } from '../git';
-import { IGitJBViewProvider } from './base-handler';
+import { IGitJBViewProvider, WebviewMessage } from './base-handler';
 import { requestAIApi } from '../ai-client';
 
 let commitAbortController: AbortController | null = null;
 let stashAbortController: AbortController | null = null;
 
 export async function handleAIMessage(
-  data: any,
+  data: WebviewMessage,
   gitService: GitService,
   webview: vscode.Webview,
   provider: IGitJBViewProvider

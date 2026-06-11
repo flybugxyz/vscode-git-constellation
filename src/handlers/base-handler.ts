@@ -6,3 +6,8 @@ export interface IGitJBViewProvider {
   scheduleRefresh(): void;
   setFileFilter(file: string): void;
 }
+
+export interface WebviewMessage {
+  type: string;
+  [key: string]: any;
+}

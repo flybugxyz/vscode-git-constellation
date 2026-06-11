@@ -26,9 +26,11 @@ export class GitOpsService {
       if (files && files.length > 0) {
         await git.add(files);
         await git.commit(message, files);
-      } else {
+      } else if (files === undefined) {
         await git.add('.');
         await git.commit(message);
+      } else {
+        throw new Error('No files selected for commit.');
       }
       return true;
     } catch (err) {
@@ -252,7 +254,9 @@ export class GitOpsService {
         try {
           try {
             await git.raw(['cherry-pick', '--abort']);
-          } catch (e) {}
+          } catch (e: any) {
+            console.warn('cherry-pick --abort failed during squash rollback', e);
+          }
           await git.checkout(originalBranch);
           if (originalHead) {
             await git.reset(['--hard', originalHead]);
@@ -350,7 +354,9 @@ export class GitOpsService {
         try {
           try {
             await git.raw(['cherry-pick', '--abort']);
-          } catch (e) {}
+          } catch (e: any) {
+            console.warn('cherry-pick --abort failed during reword rollback', e);
+          }
           await git.checkout(originalBranch);
           if (originalHead) {
             await git.reset(['--hard', originalHead]);

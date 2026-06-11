@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { GitService } from '../git';
-import { IGitJBViewProvider } from './base-handler';
+import { IGitJBViewProvider, WebviewMessage } from './base-handler';
 
 export async function handleBranchMessage(
-  data: any,
+  data: WebviewMessage,
   gitService: GitService,
   webview: vscode.Webview,
   provider: IGitJBViewProvider

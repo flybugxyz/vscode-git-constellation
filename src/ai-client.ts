@@ -19,6 +19,10 @@ export function requestAIApi(
       return reject(new Error('Invalid API URL'));
     }
 
+    if (url.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(url.hostname)) {
+      return reject(new Error('Security Policy: HTTP is not allowed for external API calls to prevent API Key leak. Please use HTTPS.'));
+    }
+
     const options: https.RequestOptions & http.RequestOptions = {
       hostname: url.hostname,
       port: url.port || (url.protocol === 'https:' ? 443 : 80),

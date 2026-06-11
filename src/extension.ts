@@ -34,6 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
       }, async () => {
         try {
           // Import dynamic loader from ai-client to avoid duplications
+          // @ts-ignore
           const { requestAIApi } = await import('./ai-client');
           const result = await requestAIApi(apiUrl, apiKey, {
             model: model,

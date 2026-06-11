@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { GitService } from '../git';
-import { IGitJBViewProvider } from './base-handler';
+import { IGitJBViewProvider, WebviewMessage } from './base-handler';
 
 export async function handleCommitMessage(
-  data: any,
+  data: WebviewMessage,
   gitService: GitService,
   webview: vscode.Webview,
   provider: IGitJBViewProvider

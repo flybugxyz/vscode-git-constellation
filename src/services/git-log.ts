@@ -1,12 +1,13 @@
 import { GitCoreService } from './git-core';
 import { validateBranchName, validateFilePath } from '../git-validation';
+const FILTER_ALL = 'ALL';
 
 export class GitLogService {
   constructor(private core: GitCoreService) {}
 
   public async getLog(
-    branch: string = 'ALL',
-    author: string = 'ALL',
+    branch: string = FILTER_ALL,
+    author: string = FILTER_ALL,
     search: string = '',
     filePath: string = '',
     skip: number = 0,
@@ -20,10 +21,10 @@ export class GitLogService {
     try {
       console.log(`GitLogService: Fetching log with parents for branch/filter: ${branch}...`);
       
-      if (branch !== 'ALL' && branch !== 'HEAD' && branch !== '') {
+      if (branch !== FILTER_ALL && branch !== 'HEAD' && branch !== '') {
         validateBranchName(branch);
       }
-      if (author && author !== 'ALL') {
+      if (author && author !== FILTER_ALL) {
         if (author.startsWith('-')) {
           throw new Error(`Invalid author: "${author}"`);
         }
@@ -70,7 +71,7 @@ export class GitLogService {
       if (maxCount > 0) {
         args.push(`--max-count=${maxCount}`);
       }
-      if (branch === 'ALL') {
+      if (branch === FILTER_ALL) {
         args.push('--all');
       } else if (branch === 'HEAD') {
         args.push('HEAD');
@@ -80,7 +81,7 @@ export class GitLogService {
         args.push('--all');
       }
       
-      if (author && author !== 'ALL') {
+      if (author && author !== FILTER_ALL) {
         args.push(`--author=${author}`);
       }
 
