@@ -29,7 +29,7 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 
 ### 3. File Tree (`webview/src/FileTree.tsx`)
 - **Structure**: Recursive tree with folder support.
-- **Expansion**: Default-expanded on load via `useEffect`.
+- **Expansion**: Default-expanded on load via `useEffect`. The expansion state (`expandedNodes`) is hoisted to parent components (e.g., `LocalChangesPanel`) to prevent state loss and UI flashing when the tree is temporarily unmounted during frequent background git refreshes.
 - **Checkboxes**: Supports rendering checkbox controls for selecting files and directories (with checked/unchecked/indeterminate states).
 - **Status Coloring**:
     - `A` (Added): Green (`#50fa7b`)
@@ -39,9 +39,9 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
     - `?` (Untracked): Red-brown (`#d16969`)
 - **Icons**: Mapped to common file extensions using Codicons.
 
-### 4. Side Pane Layout
-- Split into **Changed Files** (top) and **Commit Details** (bottom).
-- Both sections are collapsible with persistent state in the session.
+### 4. Side Pane & Top Layout
+- **Tabs**: Main navigation across Log, Local Changes, Stashes, Worktrees. Includes a global Refresh button (`codicon-refresh`) to manually trigger a git state sync when file watchers miss changes.
+- **Side Pane**: Split into Changed Files (top) and Commit Details (bottom). Both sections are collapsible with persistent state in the session.
 
 ### 5. Context Menus & Git Operations
 - **Trigger**: Right-clicking a commit row, branch (dropdown list / pills), or tag pill triggers custom context menus positioned to respect viewport boundaries.

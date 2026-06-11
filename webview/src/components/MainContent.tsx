@@ -197,6 +197,15 @@ export function MainContent({
         <div className={`tab ${activeTab === 'worktrees' ? 'active' : ''}`} onClick={() => { setActiveTab('worktrees'); selection.clearSelection(); setIsCompareMode(false); }}>
           Worktrees {gitData?.worktrees && gitData.worktrees.length > 0 && `(${gitData.worktrees.length})`}
         </div>
+        <div style={{ flex: 1 }}></div>
+        <div 
+          className="tab" 
+          title="Refresh Git Status"
+          onClick={() => vscode.postMessage({ type: 'refresh' })}
+          style={{ padding: '0 10px', display: 'flex', alignItems: 'center' }}
+        >
+          <span className="codicon codicon-refresh" style={{ fontSize: '14px' }}></span>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }} className="main-content">

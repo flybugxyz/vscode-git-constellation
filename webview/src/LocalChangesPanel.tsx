@@ -6,7 +6,7 @@ import { useGitData } from './GitDataContext';
 function getStatusChar(f: GitStatusFile): string {
   const ind = f.index;
   const wd = f.working_dir;
-  if (ind === '?' || wd === '?') return '?';
+  if (ind === '?' || wd === '?') return 'A';
   if (ind === 'D' || wd === 'D') return 'D';
   if (ind === 'A' || wd === 'A') return 'A';
   if (ind === 'R' || wd === 'R') return 'R';
@@ -36,6 +36,7 @@ export function LocalChangesPanel({
 }: LocalChangesPanelProps) {
   const { gitData, vscode, checkedFiles, setCheckedFiles } = useGitData();
   const [forcePush, setForcePush] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   const files = gitData?.status?.files || [];
 
@@ -95,6 +96,9 @@ export function LocalChangesPanel({
             checkedPaths={checkedFiles}
             onCheckChange={handleCheckChange}
             onDiscard={onDiscard}
+            rootNodeName="Changed"
+            expandedNodes={expandedNodes}
+            setExpandedNodes={setExpandedNodes}
           />
         ) : (
           <p style={{ padding: '10px', fontSize: '11px', opacity: 0.6 }}>No local changes.</p>

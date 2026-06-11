@@ -169,6 +169,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
 
         switch (data.type) {
           case 'ready':
+          case 'refresh':
             this.refresh();
             break;
           case 'setActiveRepo':

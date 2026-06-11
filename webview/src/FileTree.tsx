@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface FileInfo {
   status: string;
@@ -7,11 +7,14 @@ interface FileInfo {
 
 interface FileTreeProps {
   files: FileInfo[];
-  onFileClick: (path: string) => void;
+  onFileClick?: (path: string) => void;
   checkboxes?: boolean;
   checkedPaths?: Set<string>;
   onCheckChange?: (path: string, checked: boolean, filePaths: string[]) => void;
   onDiscard?: (path: string) => void;
+  rootNodeName?: string;
+  expandedNodes?: Set<string>;
+  setExpandedNodes?: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
 interface TreeNode {
@@ -106,22 +109,45 @@ export const FileTree: React.FC<FileTreeProps> = ({
   checkboxes = false, 
   checkedPaths, 
   onCheckChange,
-  onDiscard
+  onDiscard,
+  rootNodeName,
+  expandedNodes: propsExpandedNodes,
+  setExpandedNodes: propsSetExpandedNodes
 }) => {
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [localExpandedNodes, setLocalExpandedNodes] = useState<Set<string>>(new Set());
+  const expandedNodes = propsExpandedNodes || localExpandedNodes;
+  const setExpandedNodes = propsSetExpandedNodes || setLocalExpandedNodes;
+  const seenDirs = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const allDirs = new Set<string>();
-    files.forEach(file => {
-      const parts = file.path.split('/');
-      let currentPath = '';
-      for (let i = 0; i < parts.length - 1; i++) {
-        currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
-        allDirs.add(currentPath);
+    setExpandedNodes(prev => {
+      const newExpanded = new Set(prev);
+      let changed = false;
+
+      const allDirs = new Set<string>();
+      files.forEach(file => {
+        const parts = file.path.split('/');
+        let currentPath = '';
+        for (let i = 0; i < parts.length - 1; i++) {
+          currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+          allDirs.add(currentPath);
+        }
+      });
+      if (rootNodeName) {
+        allDirs.add(rootNodeName);
       }
+
+      allDirs.forEach(dir => {
+        if (!seenDirs.current.has(dir)) {
+          seenDirs.current.add(dir);
+          newExpanded.add(dir);
+          changed = true;
+        }
+      });
+
+      return changed ? newExpanded : prev;
     });
-    setExpandedNodes(allDirs);
-  }, [files]);
+  }, [files, rootNodeName]);
 
   const buildTree = (fileList: FileInfo[]): TreeNode => {
     const root: TreeNode = { name: '', fullPath: '', children: {}, isFile: false };
@@ -145,6 +171,22 @@ export const FileTree: React.FC<FileTreeProps> = ({
         current = current.children[part];
       });
     });
+    
+    if (rootNodeName) {
+      return {
+        name: '',
+        fullPath: '',
+        children: {
+          [rootNodeName]: {
+            name: rootNodeName,
+            fullPath: rootNodeName,
+            children: root.children,
+            isFile: false
+          }
+        },
+        isFile: false
+      };
+    }
     
     return root;
   };
@@ -212,7 +254,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
           <div 
             className={`tree-item ${getStatusClass(node.status)}`} 
             style={{ paddingLeft: `${depth * 12}px` }}
-            onClick={() => node.isFile ? onFileClick(node.fullPath) : toggleNode(node.fullPath, {} as any)}
+            onClick={() => node.isFile ? (onFileClick && onFileClick(node.fullPath)) : toggleNode(node.fullPath, {} as any)}
           >
             <span 
               className={`tree-chevron codicon ${!node.isFile && hasChildren ? (isExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right') : ''}`}
@@ -239,7 +281,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
             />
             <span className="tree-name">{node.name}</span>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {onDiscard && (
+              {onDiscard && node.fullPath !== rootNodeName && (
                 <span 
                   className="codicon codicon-discard tree-discard-btn" 
                   title="Discard changes"
