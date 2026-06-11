@@ -113,6 +113,7 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
   - `branch-handler.ts`: Branch management, tag details UI display, and remote URLs in browser.
   - `stash-handler.ts`: Stash list actions, pop/apply/drop, and stashed diffs.
   - `worktree-handler.ts`: Worktree add, remove, and prune actions.
+  - `ops-handler.ts`: Global operations (fetch, pull, push) and local change commits.
   - `ai-handler.ts`: OpenAI prompt loading and response cancellation (AbortController).
 - `src/__tests__/git.test.ts`: Unit test suite verifying GitService operations.
 - `webview/index.html`: Webview entry.

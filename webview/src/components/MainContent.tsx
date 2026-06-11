@@ -122,10 +122,20 @@ export function MainContent({
 
   const renderRefs = useCallback((refs: string) => {
     if (!refs) return null;
-    return refs.split(', ').map(ref => {
-      const isHead = ref.includes('HEAD ->');
-      const cleanRef = isHead ? ref.split('HEAD ->')[1].trim() : ref.trim();
-      const isRemote = cleanRef.includes('/');
+    
+    const refArray: string[] = [];
+    refs.split(', ').forEach(ref => {
+      if (ref.includes('HEAD ->')) {
+        refArray.push('HEAD');
+        refArray.push(ref.split('HEAD ->')[1].trim());
+      } else {
+        refArray.push(ref.trim());
+      }
+    });
+
+    return refArray.map((ref, i) => {
+      const isHead = ref === 'HEAD';
+      const isRemote = ref.includes('/');
       const isTag = ref.includes('tag: ');
       
       let className = 'label-branch';
@@ -133,11 +143,11 @@ export function MainContent({
       else if (isRemote) className = 'label-remote';
       else if (isTag) className = 'label-tag';
 
-      const displayText = isTag ? cleanRef.replace('tag: ', '') : cleanRef;
+      const displayText = isTag ? ref.replace('tag: ', '') : ref;
 
       return (
         <span 
-          key={ref} 
+          key={`${ref}-${i}`} 
           className={`label-pill ${className}`}
           onContextMenu={(e) => {
             if (isHead) return;

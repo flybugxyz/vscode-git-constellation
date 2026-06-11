@@ -279,6 +279,7 @@ input[type="checkbox"] {
   opacity: 0.9;
 }
 
+.label-head { background-color: #5a5a20; color: #f1fa8c; border-color: #f1fa8c; }
 .label-branch { background-color: #2d4a2d; color: #85e89d; border-color: #85e89d; }
 .label-tag { background-color: #4e4e10; color: #e2c08d; border-color: #e2c08d; }
 .label-remote { background-color: #3b2d4a; color: #c09efd; border-color: #c09efd; }

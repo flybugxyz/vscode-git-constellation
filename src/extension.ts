@@ -6,6 +6,7 @@ import { handleBranchMessage } from './handlers/branch-handler';
 import { handleStashMessage } from './handlers/stash-handler';
 import { handleWorktreeMessage } from './handlers/worktree-handler';
 import { handleAIMessage } from './handlers/ai-handler';
+import { handleOpsMessage } from './handlers/ops-handler';
 
 export function activate(context: vscode.ExtensionContext) {
   const gitService = new GitService();
@@ -166,6 +167,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
         if (await handleStashMessage(data, this._gitService, webviewView.webview, this)) return;
         if (await handleWorktreeMessage(data, this._gitService, webviewView.webview, this)) return;
         if (await handleAIMessage(data, this._gitService, webviewView.webview, this)) return;
+        if (await handleOpsMessage(data, this._gitService, webviewView.webview, this)) return;
 
         switch (data.type) {
           case 'ready':
