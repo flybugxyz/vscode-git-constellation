@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Commit } from './types';
 
 interface GraphProps {
@@ -17,6 +17,16 @@ const CHUNK_SIZE = 1000;
 export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChange, isLinear }) => {
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const chunksCount = Math.max(1, Math.ceil(commits.length / CHUNK_SIZE));
+  const [themeTick, setThemeTick] = useState(0);
+
+  // CR-005: Observe style changes on document.body to detect VS Code theme switch
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setThemeTick(tick => tick + 1);
+    });
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class', 'style'] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!commits.length) return;
@@ -218,14 +228,15 @@ export const GitGraph: React.FC<GraphProps> = ({ commits, rowHeight, onWidthChan
       ctx.restore();
     }
 
-  }, [commits, rowHeight, isLinear, chunksCount]);
+    // CR-005: Added themeTick and onWidthChange to dependencies
+  }, [commits, rowHeight, isLinear, chunksCount, onWidthChange, themeTick]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {Array.from({ length: chunksCount }).map((_, i) => (
         <canvas 
           key={i}
-          ref={el => canvasRefs.current[i] = el} 
+          ref={el => { canvasRefs.current[i] = el; }} 
           style={{ verticalAlign: 'top', display: 'block' }}
         />
       ))}

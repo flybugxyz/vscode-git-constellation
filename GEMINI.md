@@ -95,14 +95,38 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - `package.json`: Extension entry point, scripts, and contributes.
 - `tsconfig.json`: TypeScript compiler options and workspace exclusions.
 - `vitest.config.ts`: Vitest test suite runner configuration.
-- `src/extension.ts`: Main activation logic and message handling.
-- `src/git.ts`: Git abstraction layer with input validation safeguards.
+- `src/extension.ts`: Main activation logic and message routing to handlers.
+- `src/git.ts`: GitService delegating facade maintaining backward compatibility.
+- `src/git-validation.ts`: Git validators preventing argument/shell injections.
+- `src/ai-client.ts`: Shared OpenAI API client with AbortSignal execution.
+- `src/services/`: Modularized Git services implementing specific operations:
+  - `git-core.ts`: Base workspace repository context and remote HTTP URL parsing.
+  - `git-log.ts`: Commit log fetching, author list, tags list, and user config.
+  - `git-branch.ts`: Branch checks, tag creation, rebase, merge, and tag details provider.
+  - `git-stash.ts`: Stash management (list, show files, create/apply/pop/drop).
+  - `git-diff.ts`: File diff lists, parent hashes, compare files, and file content fetchers.
+  - `git-worktree.ts`: Worktree listing, creation, removal, and pruning.
+  - `git-ops.ts`: Git status, staging, committing, pushing, fetching, cherry-picks, and squashing.
+- `src/handlers/`: Modularized host-side postMessage handlers:
+  - `base-handler.ts`: Common interface declarations for message context.
+  - `commit-handler.ts`: Commits, copy metadata, cherry-picks, rewording, and squashing.
+  - `branch-handler.ts`: Branch management, tag details UI display, and remote URLs in browser.
+  - `stash-handler.ts`: Stash list actions, pop/apply/drop, and stashed diffs.
+  - `worktree-handler.ts`: Worktree add, remove, and prune actions.
+  - `ai-handler.ts`: OpenAI prompt loading and response cancellation (AbortController).
 - `src/__tests__/git.test.ts`: Unit test suite verifying GitService operations.
 - `webview/index.html`: Webview entry.
-- `webview/src/App.tsx`: Main UI orchestration (commit table, toolbar, branch popup, author popup, stash tab, worktree tab).
+- `webview/src/App.tsx`: Main UI orchestration mounting subcomponents and ErrorBoundary.
+- `webview/src/components/`: Modularized frontend UI tab panels:
+  - `ErrorBoundary.tsx`: React global error fallback boundary UI component.
+  - `Sidebar.tsx`: Left-aligned repository and branch/tag filter navigator.
+  - `LogTab.tsx`: Main commit log table view with canvas graph and details side pane.
+  - `LocalChangesTab.tsx`: File tree of changed files with selective staging checkboxes.
+  - `StashTab.tsx`: List of stashes, stash forms, and stashed file difference inspectors.
+  - `WorktreeTab.tsx`: Grid showing git worktrees with management action links.
 - `webview/src/types.ts`: Shared TypeScript interface definitions for domain objects (Commit, GitStatus, Stash, Worktree).
 - `webview/src/utils.ts`: Shared UI utility helpers.
-- `webview/src/GitGraph.tsx`: Commit graph rendering.
+- `webview/src/GitGraph.tsx`: Commit graph rendering on High-DPI canvas with theme MutationObserver.
 - `webview/src/FileTree.tsx`: Modified files tree view.
 - `webview/src/ContextMenu.tsx`: Unified context menu component with keyboard navigation.
 - `webview/src/CommitDetailsSidePane.tsx`: Commit details side pane (changed files + commit/stash metadata).
@@ -113,4 +137,5 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - `webview/src/hooks/useCommitSelection.ts`: Custom hook for commit multi-select/range-select/squash logic.
 - `webview/src/__tests__/contextMenuActions.test.ts`: Unit tests for context menu actions (45 tests).
 - `webview/src/styles.css`: Global styles, theme overrides, and stash panel layouts.
+
 

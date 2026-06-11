@@ -1,55 +1,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as https from 'https';
-import * as http from 'http';
 import { GitService } from './git';
-
-function requestAIApi(apiUrl: string, apiKey: string, body: any): Promise<any> {
-  return new Promise((resolve, reject) => {
-    let url: URL;
-    try {
-      url = new URL(apiUrl);
-    } catch (e) {
-      return reject(new Error('Invalid API URL'));
-    }
-
-    const options = {
-      hostname: url.hostname,
-      port: url.port,
-      path: url.pathname + url.search,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      }
-    };
-
-    const client = url.protocol === 'https:' ? https : http;
-    const req = client.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode && res.statusCode >= 400) {
-          try {
-            const errBody = JSON.parse(data);
-            return reject(new Error(errBody.error?.message || `HTTP ${res.statusCode}: ${data}`));
-          } catch {
-            return reject(new Error(`HTTP ${res.statusCode}: ${data}`));
-          }
-        }
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error('Invalid JSON response from API'));
-        }
-      });
-    });
-
-    req.on('error', (e) => reject(e));
-    req.write(JSON.stringify(body));
-    req.end();
-  });
-}
+import { handleCommitMessage } from './handlers/commit-handler';
+import { handleBranchMessage } from './handlers/branch-handler';
+import { handleStashMessage } from './handlers/stash-handler';
+import { handleWorktreeMessage } from './handlers/worktree-handler';
+import { handleAIMessage } from './handlers/ai-handler';
 
 export function activate(context: vscode.ExtensionContext) {
   const gitService = new GitService();
@@ -77,6 +33,8 @@ export function activate(context: vscode.ExtensionContext) {
         cancellable: false
       }, async () => {
         try {
+          // Import dynamic loader from ai-client to avoid duplications
+          const { requestAIApi } = await import('./ai-client');
           const result = await requestAIApi(apiUrl, apiKey, {
             model: model,
             messages: [{ role: 'user', content: 'Say "hello"' }],
@@ -201,592 +159,61 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
     webviewView.webview.onDidReceiveMessage(async (data) => {
-      switch (data.type) {
-        case 'ready':
-          this.refresh();
-          break;
-        case 'commit':
-          await this._gitService.commit(data.message, data.files);
-          this.refresh();
-          break;
-        case 'commitAndPush':
-          const commitSuccess = await this._gitService.commit(data.message, data.files);
-          if (commitSuccess) {
-            await this._gitService.push(data.force);
-          }
-          this.refresh();
-          break;
-        case 'pull':
-          await this._gitService.pull();
-          this.refresh();
-          break;
-        case 'fetch':
-          await vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: "Fetching remote changes...",
-            cancellable: false
-          }, async () => {
-            await this._gitService.fetch();
-          });
-          this.refresh();
-          break;
-        case 'push':
-          await this._gitService.push(false);
-          this.refresh();
-          break;
-        case 'discardChanges': {
-          const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to discard all changes in '${data.path}'? This operation cannot be undone.`,
-            { modal: true },
-            'Discard'
-          );
-          if (confirm === 'Discard') {
-            await this._gitService.discardChanges(data.path);
-            this.refresh();
-          }
-          break;
-        }
-        case 'generateCommitMessage': {
-          const config = vscode.workspace.getConfiguration('git-constellation.openai');
-          const apiUrl = config.get<string>('apiUrl');
-          const apiKey = config.get<string>('apiKey');
-          const model = config.get<string>('model');
-          const prompt = config.get<string>('prompt');
+      try {
+        if (await handleCommitMessage(data, this._gitService, webviewView.webview, this)) return;
+        if (await handleBranchMessage(data, this._gitService, webviewView.webview, this)) return;
+        if (await handleStashMessage(data, this._gitService, webviewView.webview, this)) return;
+        if (await handleWorktreeMessage(data, this._gitService, webviewView.webview, this)) return;
+        if (await handleAIMessage(data, this._gitService, webviewView.webview, this)) return;
 
-          if (!apiKey || !apiUrl) {
-            const action = await vscode.window.showWarningMessage('OpenAI API Key and URL must be configured to generate commit messages.', 'Open Settings');
-            if (action === 'Open Settings') {
-              vscode.commands.executeCommand('workbench.action.openSettings', 'git-constellation.openai');
-            }
-            this._view?.webview.postMessage({ type: 'generateCommitMessageResult', error: 'Not configured' });
+        switch (data.type) {
+          case 'ready':
+            this.refresh();
             break;
-          }
-
-          try {
-            await vscode.window.withProgress({
-              location: vscode.ProgressLocation.Notification,
-              title: "Generating commit message...",
-              cancellable: false
-            }, async () => {
-              const diff = await this._gitService.getDiffForFiles(data.files);
-              if (!diff.trim()) {
-                throw new Error("No diff available for the selected files.");
-              }
-
-              const result = await requestAIApi(apiUrl, apiKey, {
-                model: model,
-                messages: [
-                  { role: 'system', content: prompt },
-                  { role: 'user', content: `Here is the git diff:\n\n${diff}` }
-                ]
-              });
-
-              if (result && result.choices && result.choices[0]) {
-                const message = result.choices[0].message.content.trim();
-                this._view?.webview.postMessage({ type: 'generateCommitMessageResult', message });
-              } else {
-                throw new Error("Unexpected response structure");
-              }
-            });
-          } catch (err: any) {
-            vscode.window.showErrorMessage(`Failed to generate commit message: ${err.message}`);
-            this._view?.webview.postMessage({ type: 'generateCommitMessageResult', error: err.message });
-          }
-          break;
-        }
-        case 'generateStashMessage': {
-          const config = vscode.workspace.getConfiguration('git-constellation.openai');
-          const apiUrl = config.get<string>('apiUrl');
-          const apiKey = config.get<string>('apiKey');
-          const model = config.get<string>('model');
-
-          if (!apiKey || !apiUrl) {
-            const action = await vscode.window.showWarningMessage('OpenAI API Key and URL must be configured to generate stash descriptions.', 'Open Settings');
-            if (action === 'Open Settings') {
-              vscode.commands.executeCommand('workbench.action.openSettings', 'git-constellation.openai');
-            }
-            this._view?.webview.postMessage({ type: 'generateStashMessageResult', error: 'Not configured' });
+          case 'setActiveRepo':
+            this._gitService.setActiveRepo(data.path);
+            this.refresh();
             break;
-          }
-
-          try {
-            await vscode.window.withProgress({
-              location: vscode.ProgressLocation.Notification,
-              title: "Generating stash description...",
-              cancellable: false
-            }, async () => {
-              const files = data.files || [];
-              const diff = await this._gitService.getDiffForFiles(files);
-              if (!diff.trim()) {
-                throw new Error("No diff available for the selected files.");
-              }
-
-              const systemPrompt = "You are an AI assistant helping a developer write a concise description for a git stash. Based on the provided git diff, generate a one-line summary of the changes being stashed. Keep it under 60 characters and write only the summary. Do not prefix with 'stash' or 'WIP' as the system will label it, just summarize the main purpose of the changes.";
-              const result = await requestAIApi(apiUrl, apiKey, {
-                model: model,
-                messages: [
-                  { role: 'system', content: systemPrompt },
-                  { role: 'user', content: `Here is the git diff:\n\n${diff}` }
-                ]
-              });
-
-              if (result && result.choices && result.choices[0]) {
-                const message = result.choices[0].message.content.trim();
-                this._view?.webview.postMessage({ type: 'generateStashMessageResult', message });
-              } else {
-                throw new Error("Unexpected response structure");
-              }
-            });
-          } catch (err: any) {
-            vscode.window.showErrorMessage(`Failed to generate stash message: ${err.message}`);
-            this._view?.webview.postMessage({ type: 'generateStashMessageResult', error: err.message });
-          }
-          break;
-        }
-        case 'applyStash':
-          await this._gitService.applyStash(data.refName);
-          this.refresh();
-          break;
-        case 'popStash':
-          await this._gitService.popStash(data.refName);
-          this.refresh();
-          break;
-        case 'dropStash':
-          await this._gitService.dropStash(data.refName);
-          this.refresh();
-          break;
-        case 'clearStashes': {
-          const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to clear all stashes? This operation cannot be undone.`,
-            { modal: true },
-            'Clear All'
-          );
-          if (confirm === 'Clear All') {
-            await this._gitService.clearStashes();
-            this.refresh();
-          }
-          break;
-        }
-        case 'createStash':
-          await this._gitService.createStash(data.message, data.keepIndex, data.includeUntracked);
-          this.refresh();
-          break;
-        case 'getStashFiles': {
-          const files = await this._gitService.getStashFiles(data.hash);
-          this._view?.webview.postMessage({ type: 'files', hash: data.hash, files });
-          break;
-        }
-        case 'getDiff':
-          const files = await this._gitService.getCommitFiles(data.hash);
-          this._view?.webview.postMessage({ type: 'files', hash: data.hash, files });
-          break;
-        case 'openDiff':
-          const { hash, path: filePath, isCompare } = data;
-          if (hash) {
-            if (isCompare) {
-              const leftUri = vscode.Uri.parse(`git-constellation-show:HEAD/${filePath}`);
-              const rightUri = vscode.Uri.parse(`git-constellation-show:${hash}/${filePath}`);
-              vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (HEAD vs ${hash.substring(0, 7)})`);
-            } else {
-              const parentHash = await this._gitService.getParentHash(hash);
-              const leftUri = vscode.Uri.parse(`git-constellation-show:${parentHash || ''}/${filePath}`);
-              const rightUri = vscode.Uri.parse(`git-constellation-show:${hash}/${filePath}`);
-              vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (${hash.substring(0, 7)})`);
-            }
-          } else {
-            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-            if (workspaceRoot) {
-              const leftUri = vscode.Uri.parse(`git-constellation-show:HEAD/${filePath}`);
-              const rightUri = vscode.Uri.file(path.join(workspaceRoot, filePath));
-              vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (Local Changes)`);
-            }
-          }
-          break;
-
-        case 'setFileFilter':
-          this._currentFileFilter = data.file;
-          this.refresh();
-          break;
-        case 'setFilter':
-          this._currentFilter = data.branch;
-          this.refresh();
-          break;
-        case 'setAuthorFilter':
-          this._currentAuthorFilter = data.author;
-          this.refresh();
-          break;
-        case 'setSearchFilter':
-          this._currentSearchFilter = data.search;
-          this.refresh();
-          break;
-        case 'copySHA':
-          await vscode.env.clipboard.writeText(data.hash);
-          vscode.window.showInformationMessage('SHA copied to clipboard');
-          break;
-        case 'copyShortSHA':
-          await vscode.env.clipboard.writeText(data.hash.substring(0, 7));
-          vscode.window.showInformationMessage('Short SHA copied to clipboard');
-          break;
-        case 'copyMessage':
-          await vscode.env.clipboard.writeText(data.message);
-          vscode.window.showInformationMessage('Commit message copied to clipboard');
-          break;
-        case 'copyURL': {
-          const url = await this._gitService.getCommitUrl(data.hash);
-          if (url) {
-            await vscode.env.clipboard.writeText(url);
-            vscode.window.showInformationMessage('Commit URL copied to clipboard');
-          } else {
-            vscode.window.showErrorMessage('Failed to resolve remote commit URL');
-          }
-          break;
-        }
-        case 'openRefInBrowser': {
-          let browserUrl;
-          if (data.refType === 'commit') {
-            browserUrl = await this._gitService.getCommitUrl(data.ref);
-          } else if (data.refType === 'branch') {
-            browserUrl = await this._gitService.getBranchUrl(data.ref);
-          } else if (data.refType === 'tag') {
-            browserUrl = await this._gitService.getTagUrl(data.ref);
-          }
-          if (browserUrl) {
-            vscode.env.openExternal(vscode.Uri.parse(browserUrl));
-          } else {
-            vscode.window.showErrorMessage(`Failed to resolve remote URL for ${data.refType}`);
-          }
-          break;
-        }
-        case 'createBranchFrom': {
-          const promptLabel = data.refType === 'commit' ? `commit ${data.ref.substring(0, 7)}` :
-            data.refType === 'tag' ? `tag '${data.ref}'` :
-              `'${data.ref}'`;
-          const branchName = await vscode.window.showInputBox({
-            prompt: `Create Branch from ${promptLabel}`,
-            placeHolder: 'Enter branch name'
-          });
-          if (branchName && branchName.trim()) {
-            if (data.refType === 'commit') {
-              await this._gitService.createBranch(branchName.trim(), data.ref);
-            } else {
-              await this._gitService.createBranchFrom(branchName.trim(), data.ref);
-            }
-            this.refresh();
-          }
-          break;
-        }
-        case 'createTag': {
-          const tagName = await vscode.window.showInputBox({
-            prompt: `Create Tag at commit ${data.hash.substring(0, 7)}`,
-            placeHolder: 'Enter tag name'
-          });
-          if (tagName && tagName.trim()) {
-            await this._gitService.createTag(tagName.trim(), data.hash);
-            this.refresh();
-          }
-          break;
-        }
-        case 'createWorktree': {
-          const activeRepoPath = this._gitService.activeRepoPath;
-          const defaultPath = activeRepoPath ? path.join(path.dirname(activeRepoPath), `${path.basename(activeRepoPath)}-wt-${data.hash.substring(0, 7)}`) : '';
-          const wtPath = await vscode.window.showInputBox({
-            prompt: `Create Worktree for commit ${data.hash.substring(0, 7)}`,
-            placeHolder: 'Enter local folder path for worktree',
-            value: defaultPath
-          });
-          if (wtPath && wtPath.trim()) {
-            await this._gitService.createWorktree(wtPath.trim(), data.hash);
-            this.refresh();
-          }
-          break;
-        }
-        case 'cherryPick':
-          await this._gitService.cherryPick(data.hash);
-          this.refresh();
-          break;
-        case 'cherryPickMultiple':
-          await this._gitService.cherryPickMultiple(data.hashes);
-          this.refresh();
-          break;
-        case 'squashCommits': {
-          const validation = await this._gitService.validateSquash(data.hashes);
-          if (!validation.valid) {
-            vscode.window.showErrorMessage(`Cannot squash: ${validation.reason}`);
-            break;
-          }
-          
-          const rawMessages = await this._gitService.getCommitMessages(data.hashes);
-          const defaultMessage = rawMessages.filter(Boolean).join('\n\n');
-          
-          const commitMessage = await vscode.window.showInputBox({
-            prompt: 'Enter commit message for the squashed commit',
-            value: defaultMessage,
-            placeHolder: 'Commit message',
-            ignoreFocusOut: true
-          });
-          
-          if (commitMessage === undefined) {
-            break;
-          }
-          
-          const finalMessage = commitMessage.trim();
-          if (!finalMessage) {
-            vscode.window.showErrorMessage('Commit message cannot be empty.');
-            break;
-          }
-          
-          const success = await this._gitService.squashCommits(data.hashes, finalMessage);
-          if (success) {
-            this.refresh();
-          }
-          break;
-        }
-        case 'rewordCommit': {
-          const rawMessages = await this._gitService.getCommitMessages([data.hash]);
-          const currentMessage = rawMessages[0] || '';
-          
-          const commitMessage = await vscode.window.showInputBox({
-            prompt: `Edit commit message for ${data.hash.substring(0, 7)}`,
-            value: currentMessage,
-            placeHolder: 'Commit message',
-            ignoreFocusOut: true
-          });
-          
-          if (commitMessage === undefined) {
-            break;
-          }
-          
-          const finalMessage = commitMessage.trim();
-          if (!finalMessage) {
-            vscode.window.showErrorMessage('Commit message cannot be empty.');
-            break;
-          }
-          
-          if (finalMessage === currentMessage.trim()) {
-            break;
-          }
-          
-          const success = await this._gitService.rewordCommit(data.hash, finalMessage);
-          if (success) {
-            this.refresh();
-          }
-          break;
-        }
-        case 'cherryPickWithWorktree': {
-          const activeRepoPath = this._gitService.activeRepoPath;
-          const defaultPath = activeRepoPath ? path.join(path.dirname(activeRepoPath), `${path.basename(activeRepoPath)}-wt-cp-${data.hash.substring(0, 7)}`) : '';
-          const wtPath = await vscode.window.showInputBox({
-            prompt: `Enter worktree folder path`,
-            placeHolder: 'Enter local path',
-            value: defaultPath
-          });
-          if (!wtPath || !wtPath.trim()) break;
-          const branchName = await vscode.window.showInputBox({
-            prompt: `Enter new branch name for the cherry-pick in worktree`,
-            placeHolder: 'Enter branch name',
-            value: `cherry-pick-${data.hash.substring(0, 7)}`
-          });
-          if (!branchName || !branchName.trim()) break;
-          await this._gitService.cherryPickWithWorktree(wtPath.trim(), branchName.trim(), data.hash);
-          this.refresh();
-          break;
-        }
-        case 'revertCommit':
-          await this._gitService.revertCommit(data.hash);
-          this.refresh();
-          break;
-        case 'rebaseRef':
-          await this._gitService.rebase(data.ref);
-          this.refresh();
-          break;
-        case 'mergeRef':
-          await this._gitService.merge(data.ref);
-          this.refresh();
-          break;
-        case 'compareRef': {
-          const compareFiles = await this._gitService.getCompareFiles(data.ref);
-          this._view?.webview.postMessage({
-            type: 'compareFiles',
-            hash: data.ref,
-            files: compareFiles
-          });
-          break;
-        }
-        case 'viewDiff': {
-          const uri = vscode.Uri.parse(`git-constellation-diff:${data.hash}.diff`);
-          const doc = await vscode.workspace.openTextDocument(uri);
-          await vscode.window.showTextDocument(doc, { preview: false });
-          break;
-        }
-        case 'checkoutBranch':
-          await this._gitService.checkout(data.branch);
-          this.refresh();
-          break;
-        case 'pullBranch':
-          await this._gitService.pullBranch(data.branch);
-          this.refresh();
-          break;
-        case 'pushBranch':
-          await this._gitService.pushBranch(data.branch);
-          this.refresh();
-          break;
-        case 'pushBranchTo': {
-          const remote = await vscode.window.showInputBox({
-            prompt: `Push branch '${data.branch}' to remote`,
-            value: 'origin',
-            placeHolder: 'Enter remote name'
-          });
-          if (remote && remote.trim()) {
-            await this._gitService.pushBranch(data.branch, remote.trim());
-            this.refresh();
-          }
-          break;
-        }
-        case 'renameBranch': {
-          const newName = await vscode.window.showInputBox({
-            prompt: `Rename branch '${data.branch}'`,
-            value: data.branch,
-            placeHolder: 'Enter new branch name'
-          });
-          if (newName && newName.trim() && newName.trim() !== data.branch) {
-            await this._gitService.renameBranch(data.branch, newName.trim());
-            this.refresh();
-          }
-          break;
-        }
-        case 'deleteBranch': {
-          const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to delete branch '${data.branch}'?`,
-            { modal: true },
-            'Delete'
-          );
-          if (confirm === 'Delete') {
-            await this._gitService.deleteBranch(data.branch, data.isRemote);
-            this.refresh();
-          }
-          break;
-        }
-        case 'compareBranchWith': {
-          const branchesResult = await this._gitService.getBranches();
-          if (branchesResult) {
-            const list = branchesResult.all.filter((b: string) => b !== data.branch);
-            const otherBranch = await vscode.window.showQuickPick(list, {
-              placeHolder: `Select branch to compare with '${data.branch}'`
-            });
-            if (otherBranch) {
-              const compareFiles = await this._gitService.compareBranches(otherBranch, data.branch);
-              this._view?.webview.postMessage({
-                type: 'compareFiles',
-                hash: `${data.branch} vs ${otherBranch}`,
-                files: compareFiles
-              });
-            }
-          }
-          break;
-        }
-        case 'setUpstream': {
-          const upstream = await vscode.window.showInputBox({
-            prompt: `Set Upstream for '${data.branch}'`,
-            placeHolder: 'e.g. origin/main'
-          });
-          if (upstream && upstream.trim()) {
-            await this._gitService.setUpstream(data.branch, upstream.trim());
-            this.refresh();
-          }
-          break;
-        }
-        case 'viewTagDetails': {
-          const uri = vscode.Uri.parse(`git-constellation-tag:${data.tag}.txt`);
-          const doc = await vscode.workspace.openTextDocument(uri);
-          await vscode.window.showTextDocument(doc, { preview: false });
-          break;
-        }
-        case 'deleteTag': {
-          const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to delete tag '${data.tag}'?`,
-            { modal: true },
-            'Delete'
-          );
-          if (confirm === 'Delete') {
-            await this._gitService.deleteTag(data.tag);
-            const deleteRemote = await vscode.window.showInformationMessage(
-              `Do you also want to delete remote tag '${data.tag}' from origin?`,
-              'Yes',
-              'No'
-            );
-            if (deleteRemote === 'Yes') {
-              await this._gitService.deleteRemoteTag(data.tag);
-            }
-            this.refresh();
-          }
-          break;
-        }
-        case 'copyTagName':
-          await vscode.env.clipboard.writeText(data.tag);
-          vscode.window.showInformationMessage('Tag name copied to clipboard');
-          break;
-        case 'removeWorktree': {
-          const confirm = await vscode.window.showWarningMessage(
-            `Are you sure you want to remove worktree '${data.path}'?`,
-            { modal: true },
-            'Remove'
-          );
-          if (confirm === 'Remove') {
-            const success = await this._gitService.removeWorktree(data.path, false);
-            if (!success) {
-              const forceConfirm = await vscode.window.showWarningMessage(
-                `Failed to remove worktree '${data.path}'. It might have unstaged changes or submodules. Do you want to force remove it?`,
-                { modal: true },
-                'Force Remove'
+          case 'loadMoreCommits': {
+            const skip = data.skip || 0;
+            const maxCount = 100;
+            try {
+              const log = await this._gitService.getLog(
+                this._currentFilter,
+                this._currentAuthorFilter,
+                this._currentSearchFilter,
+                this._currentFileFilter,
+                skip,
+                maxCount
               );
-              if (forceConfirm === 'Force Remove') {
-                await this._gitService.removeWorktree(data.path, true);
-              }
+              this._view?.webview.postMessage({
+                type: 'appendCommits',
+                payload: { log }
+              });
+            } catch (err) {
+              console.error('GitJBViewProvider: Error loading more commits:', err);
             }
+            break;
+          }
+          case 'setFileFilter':
+            this._currentFileFilter = data.file;
             this.refresh();
-          }
-          break;
+            break;
+          case 'setFilter':
+            this._currentFilter = data.branch;
+            this.refresh();
+            break;
+          case 'setAuthorFilter':
+            this._currentAuthorFilter = data.author;
+            this.refresh();
+            break;
+          case 'setSearchFilter':
+            this._currentSearchFilter = data.search;
+            this.refresh();
+            break;
         }
-        case 'pruneWorktrees': {
-          await this._gitService.pruneWorktrees();
-          this.refresh();
-          break;
-        }
-        case 'openWorktree': {
-          try {
-            const uri = vscode.Uri.file(data.path);
-            await vscode.commands.executeCommand('vscode.openFolder', uri, { forceNewWindow: true });
-          } catch (err: any) {
-            vscode.window.showErrorMessage(`Failed to open worktree in new window: ${err.message || err}`);
-          }
-          break;
-        }
-        case 'setActiveRepo': {
-          this._gitService.setActiveRepo(data.path);
-          this.refresh();
-          break;
-        }
-        case 'loadMoreCommits': {
-          const skip = data.skip || 0;
-          const maxCount = 100;
-          try {
-            const log = await this._gitService.getLog(
-              this._currentFilter,
-              this._currentAuthorFilter,
-              this._currentSearchFilter,
-              this._currentFileFilter,
-              skip,
-              maxCount
-            );
-            this._view?.webview.postMessage({
-              type: 'appendCommits',
-              payload: { log }
-            });
-          } catch (err) {
-            console.error('GitJBViewProvider: Error loading more commits:', err);
-          }
-          break;
-        }
+      } catch (err) {
+        console.error('GitJBViewProvider: Error processing message:', err);
       }
     });
   }
