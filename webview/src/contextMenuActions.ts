@@ -1,6 +1,5 @@
 import { MenuEntry } from './ContextMenu';
-import { Commit } from './types';
-import { MenuState } from './App';
+import { Commit, MenuState } from './types';
 
 /**
  * Callbacks for menu actions that need to interact with App-level state.

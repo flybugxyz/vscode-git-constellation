@@ -1,12 +1,8 @@
 import React from 'react';
-import { GitData } from '../types';
+import { useGitData } from '../GitDataContext';
 
-interface WorktreeTabProps {
-  gitData: GitData | null;
-  vscode: { postMessage: (msg: any) => void };
-}
-
-export function WorktreeTab({ gitData, vscode }: WorktreeTabProps) {
+export function WorktreeTab() {
+  const { gitData, vscode } = useGitData();
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       <div className="stash-panel">

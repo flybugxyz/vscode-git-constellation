@@ -1,41 +1,25 @@
-import React from 'react';
-import { GitData } from '../types';
+import React, { useState, useRef } from 'react';
+import { useGitData } from '../GitDataContext';
+import { MenuActionData } from '../types';
 
 interface SidebarProps {
-  gitData: GitData | null;
-  vscode: { postMessage: (msg: any) => void };
-  filterBranch: string;
-  handleFilter: (branch: string) => void;
-  branchSearchQuery: string;
-  setBranchSearchQuery: (query: string) => void;
-  branchSearchInputRef: React.RefObject<HTMLInputElement | null>;
-  localExpanded: boolean;
-  setLocalExpanded: (exp: boolean) => void;
-  remoteExpanded: boolean;
-  setRemoteExpanded: (exp: boolean) => void;
-  tagsExpanded: boolean;
-  setTagsExpanded: (exp: boolean) => void;
-  pinnedBranches: Set<string>;
-  openContextMenu: (e: React.MouseEvent, data: any) => void;
+  openContextMenu: (e: React.MouseEvent, data: MenuActionData) => void;
 }
 
-export function Sidebar({
-  gitData,
-  vscode,
-  filterBranch,
-  handleFilter,
-  branchSearchQuery,
-  setBranchSearchQuery,
-  branchSearchInputRef,
-  localExpanded,
-  setLocalExpanded,
-  remoteExpanded,
-  setRemoteExpanded,
-  tagsExpanded,
-  setTagsExpanded,
-  pinnedBranches,
-  openContextMenu
-}: SidebarProps) {
+export function Sidebar({ openContextMenu }: SidebarProps) {
+  const { gitData, vscode, filterBranch, setFilterBranch, pinnedBranches } = useGitData();
+  
+  const [branchSearchQuery, setBranchSearchQuery] = useState('');
+  const [localExpanded, setLocalExpanded] = useState(true);
+  const [remoteExpanded, setRemoteExpanded] = useState(false);
+  const [tagsExpanded, setTagsExpanded] = useState(false);
+  const branchSearchInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFilter = (branch: string) => {
+    setFilterBranch(branch);
+    vscode.postMessage({ type: 'setFilter', branch });
+  };
+
   const branches = gitData?.branches?.all || [];
   const localBranches: { name: string; displayName: string }[] = [];
   const remoteBranches: { name: string; displayName: string }[] = [];

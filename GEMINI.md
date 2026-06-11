@@ -116,8 +116,10 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
   - `ai-handler.ts`: OpenAI prompt loading and response cancellation (AbortController).
 - `src/__tests__/git.test.ts`: Unit test suite verifying GitService operations.
 - `webview/index.html`: Webview entry.
-- `webview/src/App.tsx`: Main UI orchestration mounting subcomponents and ErrorBoundary.
+- `webview/src/App.tsx`: Top-level shell wrapping GitDataProvider and mounting Sidebar and MainContent.
+- `webview/src/GitDataContext.tsx`: Global React Context for all Git state and UI filter/tab state.
 - `webview/src/components/`: Modularized frontend UI tab panels:
+  - `MainContent.tsx`: Dedicated container rendering the active tab content based on context.
   - `ErrorBoundary.tsx`: React global error fallback boundary UI component.
   - `Sidebar.tsx`: Left-aligned repository and branch/tag filter navigator.
   - `LogTab.tsx`: Main commit log table view with canvas graph and details side pane.
@@ -135,6 +137,8 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - `webview/src/contextMenuActions.ts`: Pure logic for context menu item builders (commit, branch, tag, stash) and action dispatch.
 - `webview/src/hooks/useResizable.ts`: Custom hook for column/commit-box drag-resize with localStorage persistence.
 - `webview/src/hooks/useCommitSelection.ts`: Custom hook for commit multi-select/range-select/squash logic.
+- `webview/src/hooks/useVSCodeMessaging.ts`: Custom hook handling postMessage listeners and git data updates.
+- `webview/src/hooks/useContextMenuState.ts`: Custom hook handling context menu visibility and triggering.
 - `webview/src/__tests__/contextMenuActions.test.ts`: Unit tests for context menu actions (45 tests).
 - `webview/src/styles.css`: Global styles, theme overrides, and stash panel layouts.
 

@@ -13,7 +13,12 @@
     "vscode": "^1.80.0"
   },
   "categories": [
-    "Other"
+    "SCM Providers"
+  ],
+  "tags": [
+    "git",
+    "commit",
+    "intellij"
   ],
   "activationEvents": [],
   "main": "./dist/extension.js",

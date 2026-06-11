@@ -1,63 +1,52 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CommitDetailsSidePane } from '../CommitDetailsSidePane';
-import { GitData, Stash } from '../types';
+import { Stash } from '../types';
 import { formatDate } from '../utils';
+import { useGitData } from '../GitDataContext';
 
 interface StashTabProps {
-  gitData: GitData | null;
-  vscode: { postMessage: (msg: any) => void };
-  selectedStashIndex: number;
-  setSelectedStashIndex: (idx: number) => void;
-  showCreateStash: boolean;
-  setShowCreateStash: (show: boolean) => void;
-  stashMessage: string;
-  setStashMessage: (msg: string) => void;
-  stashKeepIndex: boolean;
-  setStashKeepIndex: (keep: boolean) => void;
-  stashIncludeUntracked: boolean;
-  setStashIncludeUntracked: (inc: boolean) => void;
-  isStashGenerating: boolean;
-  setIsStashGenerating: (gen: boolean) => void;
-  checkedFiles: Set<string>;
-  selectedCommitFiles: { hash: string; files: { status: string; path: string }[] } | null;
-  setSelectedCommitFiles: (files: any) => void;
-  isCompareMode: boolean;
-  setIsCompareMode: (comp: boolean) => void;
-  filesExpanded: boolean;
-  setFilesExpanded: (exp: boolean) => void;
-  detailsExpanded: boolean;
-  setDetailsExpanded: (exp: boolean) => void;
   openContextMenu: (e: React.MouseEvent, data: any) => void;
   renderRefs: (refs: string) => React.ReactNode;
 }
 
 export function StashTab({
-  gitData,
-  vscode,
-  selectedStashIndex,
-  setSelectedStashIndex,
-  showCreateStash,
-  setShowCreateStash,
-  stashMessage,
-  setStashMessage,
-  stashKeepIndex,
-  setStashKeepIndex,
-  stashIncludeUntracked,
-  setStashIncludeUntracked,
-  isStashGenerating,
-  setIsStashGenerating,
-  checkedFiles,
-  selectedCommitFiles,
-  setSelectedCommitFiles,
-  isCompareMode,
-  setIsCompareMode,
-  filesExpanded,
-  setFilesExpanded,
-  detailsExpanded,
-  setDetailsExpanded,
   openContextMenu,
   renderRefs
 }: StashTabProps) {
+  const {
+    gitData,
+    vscode,
+    checkedFiles,
+    selectedCommitFiles,
+    setSelectedCommitFiles,
+    isCompareMode,
+    setIsCompareMode,
+    filesExpanded,
+    setFilesExpanded,
+    detailsExpanded,
+    setDetailsExpanded,
+  } = useGitData();
+
+  const [selectedStashIndex, setSelectedStashIndex] = useState<number>(-1);
+  const [showCreateStash, setShowCreateStash] = useState<boolean>(false);
+  const [stashMessage, setStashMessage] = useState<string>('');
+  const [stashKeepIndex, setStashKeepIndex] = useState<boolean>(false);
+  const [stashIncludeUntracked, setStashIncludeUntracked] = useState<boolean>(true);
+  const [isStashGenerating, setIsStashGenerating] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const message = event.data;
+      if (message.type === 'generateStashMessageResult') {
+        setIsStashGenerating(false);
+        if (message.message) {
+          setStashMessage(message.message);
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
   const selectedStash = selectedStashIndex >= 0 && gitData?.stashes ? gitData.stashes[selectedStashIndex] : null;
 
   const handleSelectStash = (idx: number, stash: Stash) => {

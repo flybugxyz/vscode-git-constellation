@@ -1,30 +1,15 @@
 import React from 'react';
 import { GitGraph } from '../GitGraph';
 import { CommitDetailsSidePane } from '../CommitDetailsSidePane';
-import { GitData, Commit } from '../types';
+import { Commit } from '../types';
 import { formatDate } from '../utils';
+import { useGitData } from '../GitDataContext';
 
 interface LogTabProps {
-  gitData: GitData | null;
-  vscode: { postMessage: (msg: any) => void };
-  searchQuery: string;
-  setSearchQuery: (q: string) => void;
-  handleSearch: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  fileFilter: string;
-  setFileFilter: (f: string) => void;
-  isFetching: boolean;
-  setIsFetching: (f: boolean) => void;
   isPulling: boolean;
   setIsPulling: (p: boolean) => void;
   isPushing: boolean;
   setIsPushing: (p: boolean) => void;
-  isCompareMode: boolean;
-  setIsCompareMode: (c: boolean) => void;
-  selectedCommitFiles: { hash: string; files: { status: string; path: string }[] } | null;
-  filesExpanded: boolean;
-  setFilesExpanded: (e: boolean) => void;
-  detailsExpanded: boolean;
-  setDetailsExpanded: (e: boolean) => void;
   graphWidth: number;
   setGraphWidth: (w: number) => void;
   descWidth: number;
@@ -42,30 +27,13 @@ interface LogTabProps {
   handleTableScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   renderRefs: (refs: string) => React.ReactNode;
   openContextMenu: (e: React.MouseEvent, data: any) => void;
-  isFetchingMore: boolean;
 }
 
 export function LogTab({
-  gitData,
-  vscode,
-  searchQuery,
-  setSearchQuery,
-  handleSearch,
-  fileFilter,
-  setFileFilter,
-  isFetching,
-  setIsFetching,
   isPulling,
   setIsPulling,
   isPushing,
   setIsPushing,
-  isCompareMode,
-  setIsCompareMode,
-  selectedCommitFiles,
-  filesExpanded,
-  setFilesExpanded,
-  detailsExpanded,
-  setDetailsExpanded,
   graphWidth,
   setGraphWidth,
   descWidth,
@@ -83,8 +51,32 @@ export function LogTab({
   handleTableScroll,
   renderRefs,
   openContextMenu,
-  isFetchingMore
 }: LogTabProps) {
+  const {
+    gitData,
+    vscode,
+    searchQuery,
+    setSearchQuery,
+    fileFilter,
+    setFileFilter,
+    isFetching,
+    setIsFetching,
+    isFetchingMore,
+    hasMoreCommits,
+    selectedCommitFiles,
+    isCompareMode,
+    setIsCompareMode,
+    filesExpanded,
+    setFilesExpanded,
+    detailsExpanded,
+    setDetailsExpanded
+  } = useGitData();
+
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      vscode.postMessage({ type: 'setSearchFilter', search: searchQuery });
+    }
+  };
   const commitsList = gitData?.log?.all || [];
   const selectedCommit = selection.selectedIndex >= 0 ? commitsList[selection.selectedIndex] : null;
 

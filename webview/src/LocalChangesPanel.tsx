@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { FileTree } from './FileTree';
 import { GitStatusFile } from './types';
+import { useGitData } from './GitDataContext';
 
 function getStatusChar(f: GitStatusFile): string {
   const ind = f.index;
@@ -13,56 +14,71 @@ function getStatusChar(f: GitStatusFile): string {
 }
 
 interface LocalChangesPanelProps {
-  files: GitStatusFile[];
-  checkedFiles: Set<string>;
   commitBoxHeight: number;
-  onCheckChange: (path: string, checked: boolean, filePaths: string[]) => void;
-  onFileClick: (path: string) => void;
-  onDiscard: (path: string) => void;
-  onCommit: (message: string, files: string[]) => void;
-  onCommitAndPush: (message: string, files: string[], force: boolean) => void;
-  onGenerateAI: (files: string[]) => void;
   onStartResizeCommitBox: (startY: number, startHeight: number) => void;
   isGenerating: boolean;
+  setIsGenerating: (g: boolean) => void;
   commitMessage: string;
-  onCommitMessageChange: (msg: string) => void;
-  onGenerateResult: (msg: string) => void;
+  setCommitMessage: (msg: string) => void;
   commitActionState?: 'commit' | 'commitAndPush' | null;
+  setCommitActionState: (state: 'commit' | 'commitAndPush' | null) => void;
 }
 
 export function LocalChangesPanel({
-  files,
-  checkedFiles,
   commitBoxHeight,
-  onCheckChange,
-  onFileClick,
-  onDiscard,
-  onCommit,
-  onCommitAndPush,
-  onGenerateAI,
   onStartResizeCommitBox,
   isGenerating,
+  setIsGenerating,
   commitMessage,
-  onCommitMessageChange,
+  setCommitMessage,
   commitActionState,
+  setCommitActionState
 }: LocalChangesPanelProps) {
+  const { gitData, vscode, checkedFiles, setCheckedFiles } = useGitData();
   const [forcePush, setForcePush] = useState(false);
+
+  const files = gitData?.status?.files || [];
+
+  const handleCheckChange = useCallback((path: string, checked: boolean, filePaths: string[]) => {
+    setCheckedFiles(prevChecked => {
+      const newChecked = new Set(prevChecked);
+      filePaths.forEach(p => {
+        if (checked) {
+          newChecked.add(p);
+        } else {
+          newChecked.delete(p);
+        }
+      });
+      return newChecked;
+    });
+  }, [setCheckedFiles]);
+
+  const onFileClick = (path: string) => {
+    vscode.postMessage({ type: 'openDiff', hash: '', path });
+  };
+
+  const onDiscard = (path: string) => {
+    vscode.postMessage({ type: 'discardChanges', path });
+  };
 
   const handleCommit = () => {
     if (!commitMessage.trim() || checkedFiles.size === 0) return;
-    onCommit(commitMessage, Array.from(checkedFiles));
-    onCommitMessageChange('');
+    setCommitActionState('commit');
+    vscode.postMessage({ type: 'commitChanges', message: commitMessage, files: Array.from(checkedFiles) });
+    setCommitMessage('');
   };
 
   const handleCommitAndPush = () => {
     if (!commitMessage.trim() || checkedFiles.size === 0) return;
-    onCommitAndPush(commitMessage, Array.from(checkedFiles), forcePush);
-    onCommitMessageChange('');
+    setCommitActionState('commitAndPush');
+    vscode.postMessage({ type: 'commitAndPushChanges', message: commitMessage, files: Array.from(checkedFiles), force: forcePush });
+    setCommitMessage('');
   };
 
   const handleGenerateAI = () => {
     if (checkedFiles.size === 0) return;
-    onGenerateAI(Array.from(checkedFiles));
+    setIsGenerating(true);
+    vscode.postMessage({ type: 'generateCommitMessage', files: Array.from(checkedFiles) });
   };
 
   return (
@@ -77,7 +93,7 @@ export function LocalChangesPanel({
             onFileClick={onFileClick}
             checkboxes={true}
             checkedPaths={checkedFiles}
-            onCheckChange={onCheckChange}
+            onCheckChange={handleCheckChange}
             onDiscard={onDiscard}
           />
         ) : (
@@ -107,7 +123,7 @@ export function LocalChangesPanel({
         <textarea 
           placeholder="Commit message" 
           value={commitMessage}
-          onChange={(e) => onCommitMessageChange(e.target.value)}
+          onChange={(e) => setCommitMessage(e.target.value)}
           style={{ flex: 1, resize: 'none' }}
         />
         <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: '8px' }}>

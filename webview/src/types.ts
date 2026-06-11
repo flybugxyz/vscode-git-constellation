@@ -83,3 +83,17 @@ export interface WebviewMessage {
   type: string;
   [key: string]: any;
 }
+
+type MenuStateBase = { x: number; y: number };
+export type CommitMenu = MenuStateBase & { kind: 'commit'; commit: Commit; index: number };
+export type BranchMenu = MenuStateBase & { kind: 'branch'; branch: string; isRemote: boolean };
+export type TagMenu = MenuStateBase & { kind: 'tag'; tag: string };
+export type StashMenu = MenuStateBase & { kind: 'stash'; stash: Stash };
+
+export type MenuState = CommitMenu | BranchMenu | TagMenu | StashMenu;
+
+export type MenuActionData = 
+  | Omit<CommitMenu, 'x' | 'y'>
+  | Omit<BranchMenu, 'x' | 'y'>
+  | Omit<TagMenu, 'x' | 'y'>
+  | Omit<StashMenu, 'x' | 'y'>;
