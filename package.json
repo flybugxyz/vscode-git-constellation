@@ -143,7 +143,8 @@
         {
           "type": "webview",
           "id": "git-constellation.log",
-          "name": "Log"
+          "name": "Log",
+          "icon": "$(history)"
         }
       ]
     }
