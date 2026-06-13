@@ -59,11 +59,11 @@ export function MainContent({
 
   const { descWidth, authorWidth, dateWidth, commitBoxHeight, startColumnResize, startCommitBoxResize } = useResizable();
 
-  const { filterBranch } = useGitData();
+  const { filterBranch, filterAuthor } = useGitData();
 
   useEffect(() => {
     selection.clearSelection();
-  }, [filterBranch]);
+  }, [filterBranch, filterAuthor]);
 
   const [hoveredCommit, setHoveredCommit] = useState<{ commit: Commit; x: number; y: number } | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

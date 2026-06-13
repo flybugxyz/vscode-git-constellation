@@ -216,6 +216,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
             this.refresh();
             break;
           case 'setAuthorFilter':
+            console.log('[Host] Received setAuthorFilter with author:', data.author);
             this._currentAuthorFilter = data.author;
             this.refresh();
             break;
@@ -231,7 +232,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   }
 
   public async refresh() {
-    console.log(`GitJBViewProvider: Refreshing with filter: ${this._currentFilter}...`);
+    console.log(`GitJBViewProvider: Refreshing with filter: ${this._currentFilter}, author: ${this._currentAuthorFilter}, search: ${this._currentSearchFilter}, file: ${this._currentFileFilter}...`);
     if (this._view) {
       try {
         const maxCommits = vscode.workspace.getConfiguration('git-constellation').get<number>('maxCommits') ?? 100;

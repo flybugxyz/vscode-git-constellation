@@ -69,8 +69,33 @@ export function LogTab({
     filesExpanded,
     setFilesExpanded,
     detailsExpanded,
-    setDetailsExpanded
+    setDetailsExpanded,
+    filterAuthor,
+    setFilterAuthor
   } = useGitData();
+
+  const [authorMenuOpen, setAuthorMenuOpen] = React.useState(false);
+  const authorHeaderRef = React.useRef<HTMLTableHeaderCellElement>(null);
+
+  React.useEffect(() => {
+    if (!authorMenuOpen) return;
+    const handleGlobalClick = (e: MouseEvent) => {
+      if (authorHeaderRef.current && !authorHeaderRef.current.contains(e.target as Node)) {
+        setAuthorMenuOpen(false);
+      }
+    };
+    window.addEventListener('mousedown', handleGlobalClick);
+    return () => {
+      window.removeEventListener('mousedown', handleGlobalClick);
+    };
+  }, [authorMenuOpen]);
+
+  const handleSelectAuthor = (author: string) => {
+    console.log('[Webview] Selected author:', author);
+    setFilterAuthor(author);
+    vscode.postMessage({ type: 'setAuthorFilter', author });
+    setAuthorMenuOpen(false);
+  };
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -146,6 +171,7 @@ export function LogTab({
                 ✕
               </span>
             )}
+
             {fileFilter && (
               <div 
                 className="file-filter-badge"
@@ -253,8 +279,85 @@ export function LogTab({
                     }}
                   />
                 </th>
-                <th style={{ width: `${authorWidth}px`, position: 'relative' }}>
-                  Author
+                <th ref={authorHeaderRef} style={{ width: `${authorWidth}px`, position: 'relative' }}>
+                  <div 
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px', paddingRight: '8px', boxSizing: 'border-box', height: '100%', width: '100%', overflow: 'hidden' }}
+                  >
+                    <div 
+                      onClick={() => setAuthorMenuOpen(prev => !prev)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', userSelect: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 'calc(100% - 12px)' }}
+                      title="Filter by Author"
+                    >
+                      <span style={{ fontWeight: 'bold' }}>
+                        Author{filterAuthor !== 'ALL' ? `: ${filterAuthor}` : ''}
+                      </span>
+                      <span className="codicon codicon-chevron-down" style={{ fontSize: '10px', opacity: 0.8 }}></span>
+                    </div>
+                  </div>
+                  
+                  {authorMenuOpen && (
+                    <div 
+                      className="header-filter-popup"
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '4px',
+                        zIndex: 1000,
+                        backgroundColor: 'var(--vscode-editorWidget-background, #252526)',
+                        color: 'var(--vscode-foreground, #cccccc)',
+                        border: '1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border, #454545))',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                        borderRadius: '4px',
+                        minWidth: '160px',
+                        maxWidth: '240px',
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        padding: '4px 0',
+                        textAlign: 'left'
+                      }}
+                    >
+                      <div 
+                        className={`header-filter-item ${filterAuthor === 'ALL' ? 'selected' : ''}`}
+                        onClick={() => handleSelectAuthor('ALL')}
+                        style={{
+                          padding: '4px 12px',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <span>All</span>
+                        {filterAuthor === 'ALL' && <span className="codicon codicon-check" style={{ fontSize: '10px' }}></span>}
+                      </div>
+                      <div className="context-menu-separator" style={{ margin: '4px 0', height: '1px', backgroundColor: 'var(--vscode-panel-border, #454545)', opacity: 0.4 }} />
+                      {gitData?.authors?.map((author) => (
+                        <div 
+                          key={author}
+                          className={`header-filter-item ${filterAuthor === author ? 'selected' : ''}`}
+                          onClick={() => handleSelectAuthor(author)}
+                          style={{
+                            padding: '4px 12px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            userSelect: 'none',
+                            textOverflow: 'ellipsis',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{author}</span>
+                          {filterAuthor === author && <span className="codicon codicon-check" style={{ fontSize: '10px' }}></span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div 
                     className="resize-handle"
                     onMouseDown={(e) => {
