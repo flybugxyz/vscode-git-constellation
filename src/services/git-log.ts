@@ -62,6 +62,29 @@ export class GitLogService {
         });
       };
 
+      let refsToFetch = [branch];
+      if (branch && branch !== FILTER_ALL) {
+        try {
+          let localBranchName = branch;
+          if (branch === 'HEAD') {
+            localBranchName = (await git.raw(['rev-parse', '--abbrev-ref', 'HEAD'])).trim();
+          }
+          if (localBranchName && localBranchName !== 'HEAD') {
+            const upstream = (await git.raw(['rev-parse', '--abbrev-ref', `${localBranchName}@{upstream}`])).trim();
+            if (upstream) {
+              validateBranchName(upstream);
+              const behindCountStr = await git.raw(['rev-list', '--count', `${localBranchName}..${upstream}`]);
+              const behindCount = parseInt(behindCountStr.trim(), 10);
+              if (!isNaN(behindCount) && behindCount > 0) {
+                refsToFetch.push(upstream);
+              }
+            }
+          }
+        } catch (e) {
+          // ignore if no upstream or detached HEAD
+        }
+      }
+
       const args = [
         'log'
       ];
@@ -74,9 +97,9 @@ export class GitLogService {
       if (branch === FILTER_ALL) {
         args.push('--all');
       } else if (branch === 'HEAD') {
-        args.push('HEAD');
+        args.push(...refsToFetch);
       } else if (branch) {
-        args.push(branch);
+        args.push(...refsToFetch);
       } else {
         args.push('--all');
       }

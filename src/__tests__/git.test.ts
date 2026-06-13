@@ -389,6 +389,49 @@ branch refs/heads/feature-1`;
       });
     });
   });
+
+  describe('getLog tracking branch resolution', () => {
+    it('should include tracking branch in log query when tracking branch is ahead', async () => {
+      mockSimpleGitInstance.raw.mockImplementation(async (args: string[]) => {
+        if (args[0] === 'rev-parse' && args[1] === '--abbrev-ref' && args[2] === 'main@{upstream}') {
+          return 'origin/main\n';
+        }
+        if (args[0] === 'rev-list' && args[1] === '--count' && args[2] === 'main..origin/main') {
+          return '2\n';
+        }
+        if (args[0] === 'log') {
+          expect(args).toContain('main');
+          expect(args).toContain('origin/main');
+          return 'hash1\t\t\tmsg1\tAuthor\temail\t123456\0';
+        }
+        return '';
+      });
+
+      const logs = await gitService.getLog('main');
+      expect(logs.all).toHaveLength(1);
+      expect(logs.all[0].hash).toBe('hash1');
+    });
+
+    it('should not include tracking branch if it is not ahead (behindCount = 0)', async () => {
+      mockSimpleGitInstance.raw.mockImplementation(async (args: string[]) => {
+        if (args[0] === 'rev-parse' && args[1] === '--abbrev-ref' && args[2] === 'main@{upstream}') {
+          return 'origin/main\n';
+        }
+        if (args[0] === 'rev-list' && args[1] === '--count' && args[2] === 'main..origin/main') {
+          return '0\n';
+        }
+        if (args[0] === 'log') {
+          expect(args).toContain('main');
+          expect(args).not.toContain('origin/main');
+          return 'hash1\t\t\tmsg1\tAuthor\temail\t123456\0';
+        }
+        return '';
+      });
+
+      const logs = await gitService.getLog('main');
+      expect(logs.all).toHaveLength(1);
+    });
+  });
 });
 
 
