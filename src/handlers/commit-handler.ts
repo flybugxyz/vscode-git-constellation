@@ -68,6 +68,14 @@ export async function handleCommitMessage(
       return true;
     }
 
+    case 'squashCommitsSubmit': {
+      const success = await gitService.squashCommits(data.hashes, data.message);
+      if (success) {
+        provider.refresh();
+      }
+      return true;
+    }
+
     case 'rewordCommit': {
       const rawMessages = await gitService.getCommitMessages([data.hash]);
       const currentMessage = rawMessages[0] || '';
@@ -177,6 +185,21 @@ export async function handleCommitMessage(
           const leftUri = vscode.Uri.parse(`git-constellation-show:HEAD/${filePath}`);
           const rightUri = vscode.Uri.file(path.join(workspaceRoot, filePath));
           vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, `${filePath} (Local Changes)`);
+        }
+      }
+      return true;
+    }
+
+    case 'openFile': {
+      const { path: filePath } = data;
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (workspaceRoot) {
+        const fileUri = vscode.Uri.file(path.join(workspaceRoot, filePath));
+        try {
+          const doc = await vscode.workspace.openTextDocument(fileUri);
+          await vscode.window.showTextDocument(doc, { preview: false });
+        } catch (e: any) {
+          vscode.window.showErrorMessage(`Failed to open file: ${e.message}`);
         }
       }
       return true;

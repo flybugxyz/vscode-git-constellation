@@ -102,6 +102,12 @@ export function useVSCodeMessaging(callbacks: {
           }
           break;
         }
+        case 'stopLoading': {
+          setIsFetching(false);
+          setIsFetchingMore(false);
+          callbacks.onStopLoadingState?.();
+          break;
+        }
       }
     };
 

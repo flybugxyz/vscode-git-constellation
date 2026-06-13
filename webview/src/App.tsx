@@ -3,6 +3,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Sidebar } from './components/Sidebar';
 import { MainContent } from './components/MainContent';
 import { RewordModal } from './components/RewordModal';
+import { SquashModal } from './components/SquashModal';
 import { GitDataProvider, useGitData } from './GitDataContext';
 import { useVSCodeMessaging } from './hooks/useVSCodeMessaging';
 import { useCommitSelection } from './hooks/useCommitSelection';
@@ -26,7 +27,16 @@ function AppContent() {
     },
   });
 
-  const { menuState, openContextMenu, handleCloseMenu, handleMenuAction, rewordModal, setRewordModal } = useContextMenuState(selection);
+  const { 
+    menuState, 
+    openContextMenu, 
+    handleCloseMenu, 
+    handleMenuAction, 
+    rewordModal, 
+    setRewordModal,
+    squashModal,
+    setSquashModal
+  } = useContextMenuState(selection);
 
   return (
     <ErrorBoundary vscode={vscode}>
@@ -49,6 +59,17 @@ function AppContent() {
           vscode.postMessage({ type: 'rewordCommitSubmit', hash, message });
           setRewordModal(null);
         }}
+      />
+      <SquashModal
+        isOpen={!!squashModal}
+        hashes={squashModal?.hashes || []}
+        initialMessage={squashModal?.defaultMessage || ''}
+        onClose={() => setSquashModal(null)}
+        onSubmit={(hashes, message) => {
+          vscode.postMessage({ type: 'squashCommitsSubmit', hashes, message });
+          setSquashModal(null);
+        }}
+        vscode={vscode}
       />
     </ErrorBoundary>
   );

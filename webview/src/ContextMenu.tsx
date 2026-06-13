@@ -7,7 +7,7 @@ export type MenuItem = {
   danger?: boolean;
   disabled?: boolean;
   hidden?: boolean;
-  submenu?: MenuItem[];
+  submenu?: MenuEntry[];
 };
 
 export type MenuSeparator = { type: 'separator', hidden?: boolean };

@@ -31,6 +31,16 @@
       {
         "command": "git-constellation.viewFileHistory",
         "title": "View File History (GitConstellation)"
+      },
+      {
+        "command": "git-constellation.explainMergeEditorConflict",
+        "title": "Explain Conflict with AI",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "git-constellation.semanticMergeEditorPreview",
+        "title": "Semantic Merge Preview",
+        "icon": "$(git-merge)"
       }
     ],
     "menus": {
@@ -46,6 +56,28 @@
           "command": "git-constellation.viewFileHistory",
           "when": "resourceScheme == file",
           "group": "git-constellation"
+        },
+        {
+          "command": "git-constellation.explainMergeEditorConflict",
+          "when": "isInMergeEditor || mergeEditorVisible || conflictEditing",
+          "group": "git-constellation-merge@1"
+        },
+        {
+          "command": "git-constellation.semanticMergeEditorPreview",
+          "when": "isInMergeEditor || mergeEditorVisible || conflictEditing",
+          "group": "git-constellation-merge@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "git-constellation.explainMergeEditorConflict",
+          "when": "isInMergeEditor || mergeEditorVisible || conflictEditing",
+          "group": "navigation"
+        },
+        {
+          "command": "git-constellation.semanticMergeEditorPreview",
+          "when": "isInMergeEditor || mergeEditorVisible || conflictEditing",
+          "group": "navigation"
         }
       ]
     },
@@ -72,10 +104,28 @@
           "default": "# Role\\nYou are a senior full-stack developer and a strict practitioner of the Conventional Commits specification. Your task is to generate clean, standard, and highly readable commit messages based on the provided code changes (git diff) or a brief description of the work.\\n\\n# Guidelines\\nYou must strictly follow the Conventional Commits types defined below:\\n- feat: A new feature\\n- fix: A bug fix\\n- docs: Documentation only changes\\n- style: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc.)\\n- refactor: A code change that neither fixes a bug nor adds a feature\\n- perf: A code change that improves performance\\n- test: Adding missing tests or correcting existing tests\\n- build: Changes that affect the build system or external dependencies (example scopes: gulp, webpack, npm, vite, vercel)\\n- ci: Changes to our CI configuration files and scripts (example scopes: GitHub Actions, Travis)\\n- chore: Other changes that don't modify src or test files (e.g., updating .gitignore)\\n- revert: Reverts a previous commit\\n\\n# Output Format\\nThe commit message must strictly follow this structure:\\n<type>(<scope>): <short summary>\\n\\n[optional body]\\n\\n[optional footer(s)]\\n\\n# Output Rules\\n1. Subject Line (First line):\\n   - The <type> MUST be one of the types listed above.\\n   - The <scope> is optional but recommended. It should represent the module or component affected (e.g., auth, ui, api).\\n   - The <short summary> MUST use the imperative, present tense (e.g., \\\"add\\\" instead of \\\"added\\\", \\\"fix\\\" instead of \\\"fixed\\\").\\n   - The <short summary> should be in lowercase, and MUST NOT end with a period (.).\\n   - Keep the entire subject line under 50 characters.\\n2. Body (Optional):\\n   - Use the body if the changes are complex or require architectural context. Leave a blank line before starting the body.\\n   - Explain the \\\"why\\\" and \\\"what\\\" of the changes, not just \\\"how\\\" (don't just repeat the code).\\n   - Wrap lines at 72 characters.\\n3. Language:\\n   - The entire commit message must be generated in English.\\n\\n# Input\\nHere are my code changes/description. Please generate the corresponding commit message:\\n",
           "description": "System prompt for generating commit messages."
         },
+        "git-constellation.openai.language": {
+          "type": "string",
+          "default": "en",
+          "enum": [
+            "en",
+            "zh-CN"
+          ],
+          "enumDescriptions": [
+            "English",
+            "Chinese (Simplified) / 中文(简体)"
+          ],
+          "description": "Language used for AI explanations and assistant messages."
+        },
         "git-constellation.maxCommits": {
           "type": "number",
           "default": 100,
           "description": "Maximum number of commits to display in the log. Set to 0 for unlimited (not recommended for large repositories)."
+        },
+        "git-constellation.localHistory.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Local History tracking and semantic AI search. When enabled, every file save will be tracked locally, which may consume additional disk space and background CPU performance."
         }
       }
     },

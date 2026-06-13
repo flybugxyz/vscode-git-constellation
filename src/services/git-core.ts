@@ -1,4 +1,4 @@
-import { simpleGit, SimpleGit } from 'simple-git';
+import { simpleGit, SimpleGit, SimpleGitOptions } from 'simple-git';
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as pathModule from 'path';
@@ -18,8 +18,26 @@ export class GitCoreService {
     this._workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (this._workspaceRoot) {
       this._activeRepoPath = this._workspaceRoot;
-      this._gitInstances.set(this._workspaceRoot, simpleGit(this._workspaceRoot));
+      this._gitInstances.set(this._workspaceRoot, this.initSimpleGit(this._workspaceRoot));
     }
+  }
+
+  private initSimpleGit(path: string): SimpleGit {
+    return simpleGit({
+      baseDir: path,
+      binary: 'git',
+      maxConcurrentProcesses: 6,
+      timeout: {
+        block: 15000 // 15 seconds timeout to prevent hanging the UI
+      },
+      unsafe: {
+        allowUnsafeSshCommand: true
+      }
+    }).env({
+      ...process.env,
+      GIT_TERMINAL_PROMPT: '0',
+      GIT_SSH_COMMAND: 'ssh -o BatchMode=yes'
+    });
   }
 
   public get workspaceRoot(): string | undefined {
@@ -37,7 +55,7 @@ export class GitCoreService {
   public get git(): SimpleGit | undefined {
     if (!this._activeRepoPath) return undefined;
     if (!this._gitInstances.has(this._activeRepoPath)) {
-      this._gitInstances.set(this._activeRepoPath, simpleGit(this._activeRepoPath));
+      this._gitInstances.set(this._activeRepoPath, this.initSimpleGit(this._activeRepoPath));
     }
     return this._gitInstances.get(this._activeRepoPath);
   }
@@ -52,7 +70,7 @@ export class GitCoreService {
     }];
 
     try {
-      const mainGit = this._gitInstances.get(this._workspaceRoot) || simpleGit(this._workspaceRoot);
+      const mainGit = this._gitInstances.get(this._workspaceRoot) || this.initSimpleGit(this._workspaceRoot);
       const submodulesOutput = await mainGit.raw(['submodule', 'status']);
       if (submodulesOutput && submodulesOutput.trim()) {
         const lines = submodulesOutput.trim().split('\n');

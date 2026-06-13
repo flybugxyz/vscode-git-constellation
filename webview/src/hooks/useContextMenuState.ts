@@ -7,6 +7,7 @@ import { UseCommitSelectionReturn } from './useCommitSelection';
 export function useContextMenuState(selection: UseCommitSelectionReturn) {
   const [menuState, setMenuState] = useState<MenuState | null>(null);
   const [rewordModal, setRewordModal] = useState<{ hash: string; currentMessage: string } | null>(null);
+  const [squashModal, setSquashModal] = useState<{ hashes: string[]; defaultMessage: string } | null>(null);
   
   const { 
     vscode, 
@@ -54,6 +55,12 @@ export function useContextMenuState(selection: UseCommitSelectionReturn) {
       selectedIndices: selection.selectedIndices,
       onRewordCommit: (hash: string, currentMessage: string) => {
         setRewordModal({ hash, currentMessage });
+      },
+      onSquashCommits: (hashes: string[]) => {
+        const selectedCommits = selection.selectedIndices.map(i => gitData?.log?.all?.[i]);
+        const messages = selectedCommits.map(c => c?.message || '').filter(Boolean);
+        const defaultMessage = messages.join('\n\n');
+        setSquashModal({ hashes, defaultMessage });
       }
     });
     setMenuState(null);
@@ -69,6 +76,8 @@ export function useContextMenuState(selection: UseCommitSelectionReturn) {
     handleCloseMenu,
     handleMenuAction,
     rewordModal,
-    setRewordModal
+    setRewordModal,
+    squashModal,
+    setSquashModal
   };
 }

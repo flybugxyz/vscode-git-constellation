@@ -28,6 +28,10 @@ export class GitService {
     this._ops = new GitOpsService(this._core);
   }
 
+  public get git() {
+    return this._core.git;
+  }
+
   // GitCore methods
   public get activeRepoPath(): string | undefined {
     return this._core.activeRepoPath;

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 import { GitService } from './git';
 import { handleCommitMessage } from './handlers/commit-handler';
 import { handleBranchMessage } from './handlers/branch-handler';
@@ -7,10 +8,35 @@ import { handleStashMessage } from './handlers/stash-handler';
 import { handleWorktreeMessage } from './handlers/worktree-handler';
 import { handleAIMessage } from './handlers/ai-handler';
 import { handleOpsMessage } from './handlers/ops-handler';
+import { handleChangelistMessage } from './handlers/changelist-handler';
+import { GitLocalHistoryService } from './services/git-local-history';
+import { GitMergeAssistantService } from './services/git-merge-assistant';
 
 export function activate(context: vscode.ExtensionContext) {
   const gitService = new GitService();
-  const provider = new GitJBViewProvider(context.extensionUri, gitService);
+  const localHistoryService = new GitLocalHistoryService(context);
+  localHistoryService.activate();
+
+  const mergeAssistantService = new GitMergeAssistantService(context, gitService);
+  mergeAssistantService.activate();
+
+  context.subscriptions.push({
+    dispose: () => {
+      localHistoryService.deactivate();
+      mergeAssistantService.deactivate();
+    }
+  });
+
+  const provider = new GitJBViewProvider(context.extensionUri, gitService, context, localHistoryService);
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('git-constellation.localHistory.enabled')) {
+        localHistoryService.activate();
+        provider.refresh();
+      }
+    })
+  );
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -151,7 +177,9 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
-    private readonly _gitService: GitService
+    private readonly _gitService: GitService,
+    public readonly context: vscode.ExtensionContext,
+    private readonly _localHistoryService: GitLocalHistoryService
   ) { }
 
   public resolveWebviewView(
@@ -176,12 +204,54 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
         if (await handleWorktreeMessage(data, this._gitService, webviewView.webview, this)) return;
         if (await handleAIMessage(data, this._gitService, webviewView.webview, this)) return;
         if (await handleOpsMessage(data, this._gitService, webviewView.webview, this)) return;
+        if (await handleChangelistMessage(data, this._gitService, webviewView.webview, this)) return;
 
         switch (data.type) {
           case 'ready':
           case 'refresh':
             this.refresh();
             break;
+          case 'searchLocalHistory': {
+            const result = await this._localHistoryService.search(data.query);
+            webviewView.webview.postMessage({ 
+              type: 'searchLocalHistoryResult', 
+              results: result.results, 
+              message: result.message, 
+              error: result.error 
+            });
+            break;
+          }
+          case 'openSettings': {
+            vscode.commands.executeCommand('workbench.action.openSettings', data.setting);
+            break;
+          }
+          case 'restoreLocalHistoryFilePrompt': {
+            const { filePath, timestamp } = data;
+            const selection = await vscode.window.showWarningMessage(
+              `Are you sure you want to restore "${filePath}" to the snapshot from ${new Date(timestamp).toLocaleString()}? Unsaved changes in the file will be overwritten.`,
+              { modal: true },
+              'Restore'
+            );
+            if (selection === 'Restore') {
+              const snapFile = path.join(this._localHistoryService.historyDir, filePath, `${timestamp}.txt`);
+              if (fs.existsSync(snapFile)) {
+                const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                if (workspaceRoot) {
+                  const destPath = path.join(workspaceRoot, filePath);
+                  try {
+                    fs.writeFileSync(destPath, fs.readFileSync(snapFile));
+                    vscode.window.showInformationMessage(`Successfully restored ${filePath} to snapshot.`);
+                    this.refresh();
+                  } catch (e: any) {
+                    vscode.window.showErrorMessage(`Failed to restore file: ${e.message}`);
+                  }
+                }
+              } else {
+                vscode.window.showErrorMessage('Snapshot file not found.');
+              }
+            }
+            break;
+          }
           case 'setActiveRepo':
             this._gitService.setActiveRepo(data.path);
             this.refresh();
@@ -227,6 +297,11 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
         }
       } catch (err) {
         console.error('GitJBViewProvider: Error processing message:', err);
+        try {
+          webviewView.webview.postMessage({ type: 'stopLoading' });
+        } catch (postErr) {
+          console.error('GitJBViewProvider: Failed to send stopLoading fallback:', postErr);
+        }
       }
     });
   }
@@ -248,6 +323,34 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           this._gitService.getRepositories()
         ]);
 
+        const currentModifiedPaths = new Set(status?.files?.map(f => f.path) || []);
+        let changelists = this.context.workspaceState.get<any[]>('changelists') || [];
+
+        let defaultCl = changelists.find(cl => cl.isDefault);
+        if (!defaultCl) {
+          defaultCl = { id: 'default', name: 'Default Changelist', filePaths: [], isDefault: true };
+          changelists.push(defaultCl);
+        }
+
+        for (const cl of changelists) {
+          cl.filePaths = cl.filePaths.filter((p: string) => currentModifiedPaths.has(p));
+        }
+
+        const assignedPaths = new Set<string>();
+        for (const cl of changelists) {
+          for (const p of cl.filePaths) {
+            assignedPaths.add(p);
+          }
+        }
+
+        for (const p of currentModifiedPaths) {
+          if (!assignedPaths.has(p)) {
+            defaultCl.filePaths.push(p);
+          }
+        }
+
+        await this.context.workspaceState.update('changelists', changelists);
+
         console.log(`GitJBViewProvider: Sending update to webview. Log: ${log?.all?.length || 0} commits`);
 
         this._view.webview.postMessage({
@@ -263,13 +366,20 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
             stashes,
             worktrees,
             repositories,
+            changelists,
+            localHistoryEnabled: vscode.workspace.getConfiguration('git-constellation.localHistory').get<boolean>('enabled', false),
             activeRepo: this._gitService.activeRepoPath,
             selectTab: this._pendingTabSelection
           }
         });
         this._pendingTabSelection = undefined;
       } catch (err) {
-        console.error('GitJBViewProvider: Error during refresh:', err);
+        console.log('GitJBViewProvider: Error during refresh:', err);
+        try {
+          this._view.webview.postMessage({ type: 'stopLoading' });
+        } catch (postErr) {
+          console.error('GitJBViewProvider: Failed to send stopLoading message:', postErr);
+        }
       }
     } else {
       console.log('GitJBViewProvider: No view available to refresh');

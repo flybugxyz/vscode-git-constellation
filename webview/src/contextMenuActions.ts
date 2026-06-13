@@ -17,6 +17,7 @@ export interface MenuActionCallbacks {
   getAllCommitHashes: (indices: number[]) => string[];
   selectedIndices: number[];
   onRewordCommit?: (hash: string, currentMessage: string) => void;
+  onSquashCommits?: (hashes: string[]) => void;
 }
 
 /**
@@ -149,7 +150,11 @@ function dispatchCommitAction(
     case 'squashCommits': {
       const sortedIndices = [...cb.selectedIndices].sort((a, b) => b - a);
       const hashes = cb.getAllCommitHashes(sortedIndices);
-      cb.postMessage({ type: 'squashCommits', hashes });
+      if (cb.onSquashCommits) {
+        cb.onSquashCommits(hashes);
+      } else {
+        cb.postMessage({ type: 'squashCommits', hashes });
+      }
       break;
     }
     case 'rewordCommit':

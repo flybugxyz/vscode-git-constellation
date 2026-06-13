@@ -3,6 +3,7 @@ import { LogTab } from './LogTab';
 import { LocalChangesTab } from './LocalChangesTab';
 import { StashTab } from './StashTab';
 import { WorktreeTab } from './WorktreeTab';
+import { LocalHistoryTab } from './LocalHistoryTab';
 import { useGitData } from '../GitDataContext';
 import { useContextMenuState } from '../hooks/useContextMenuState';
 import { useCommitSelection } from '../hooks/useCommitSelection';
@@ -165,7 +166,7 @@ export function MainContent({
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'update') {
+      if (event.data.type === 'update' || event.data.type === 'stopLoading') {
         setIsPulling(false);
         setIsPushing(false);
         setCommitActionState(null);
@@ -212,6 +213,9 @@ export function MainContent({
         <div className={`tab ${activeTab === 'worktrees' ? 'active' : ''}`} onClick={() => { setActiveTab('worktrees'); selection.clearSelection(); setIsCompareMode(false); }}>
           Worktrees {gitData?.worktrees && gitData.worktrees.length > 0 && `(${gitData.worktrees.length})`}
         </div>
+        {/* <div className={`tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => { setActiveTab('history'); selection.clearSelection(); setIsCompareMode(false); }}>
+          Local History
+        </div> */}
         <div style={{ flex: 1 }}></div>
         <div 
           className="tab" 
@@ -269,6 +273,9 @@ export function MainContent({
         </div>
         <div style={{ display: activeTab === 'worktrees' ? 'flex' : 'none', flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
           <WorktreeTab />
+        </div>
+        <div style={{ display: activeTab === 'history' ? 'flex' : 'none', flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
+          <LocalHistoryTab />
         </div>
 
       {menuState && (

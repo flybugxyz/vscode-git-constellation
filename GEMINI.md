@@ -37,6 +37,8 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
     - `D` (Deleted): Red + Strikethrough (`#ff5555`)
     - `R` (Renamed): Purple (`#bd93f9`)
     - `?` (Untracked): Red-brown (`#d16969`)
+    - `U` (Conflicted): Red + Bold (`var(--vscode-errorForeground)`)
+- **Conflicts Group**: Conflicted files are dynamically isolated into a virtual, non-deletable, non-renamable "Conflicts" group at the top of the Changelist list. Checkboxes are disabled/hidden for conflicted files to prevent committing unresolved conflicts.
 - **Icons**: Mapped to common file extensions using Codicons.
 
 ### 4. Side Pane & Top Layout
@@ -79,6 +81,12 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
   - **Remove Worktree**: Prompts the user to delete/remove a worktree. Disabled for the main worktree. Falls back to a prompt to force-delete (`--force`) if deletion fails.
   - **Prune Worktrees**: Clears stale worktree administrative details.
 
+### 10. Merge Assistant & Conflicts Resolution
+- **CodeLens Integration**: Scans open editor windows for standard git conflict markers and adds inline `Explain Conflict with AI` and `Semantic Merge Preview` actions.
+- **Merge Editor Integration**: Exposes the same commands (`Explain Conflict with AI` and `Semantic Merge Preview`) as toolbar icons and right-click editor context menu options when editing inside VS Code's 3-way merge editor (`isInMergeEditor` context key).
+- **Smart Active Conflict Detection**: If invoked inside the merge editor, it will check if the user's cursor is currently inside a specific conflict block to resolve/explain it. Otherwise, it will automatically target the first conflict block in the document.
+- **Language Localization**: Supports toggle config `git-constellation.openai.language` (English `en` vs Chinese `zh-CN`). Translates AI instructions to respond in Simplified Chinese, and localizes all VS Code assistant dialogs, buttons, and notifications.
+
 ## Maintenance Guidelines
 - **Building**: Always run `npm run compile` to build both Webview (Vite) and Extension (Webpack).
 - **Styling**: Prefer `var(--vscode-*)` variables for theme compatibility.
@@ -107,6 +115,8 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
   - `git-diff.ts`: File diff lists, parent hashes, compare files, and file content fetchers.
   - `git-worktree.ts`: Worktree listing, creation, removal, and pruning.
   - `git-ops.ts`: Git status, staging, committing, pushing, fetching, cherry-picks, and squashing.
+  - `git-local-history.ts`: Local history snapshot tracking, cleanup, and semantic search.
+  - `git-merge-assistant.ts`: 3-way merge conflict CodeLens provider, explanation panel, and semantic resolution.
 - `src/handlers/`: Modularized host-side postMessage handlers:
   - `base-handler.ts`: Common interface declarations for message context.
   - `commit-handler.ts`: Commits, copy metadata, cherry-picks, rewording, and squashing.
@@ -114,10 +124,11 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
   - `stash-handler.ts`: Stash list actions, pop/apply/drop, and stashed diffs.
   - `worktree-handler.ts`: Worktree add, remove, and prune actions.
   - `ops-handler.ts`: Global operations (fetch, pull, push) and local change commits.
-  - `ai-handler.ts`: OpenAI prompt loading and response cancellation (AbortController).
+  - `ai-handler.ts`: OpenAI prompt loading, response cancellation, squash refinement, and split suggestions.
+  - `changelist-handler.ts`: SCM changelist operations (create, rename, delete, move files, batch split apply).
 - `src/__tests__/git.test.ts`: Unit test suite verifying GitService operations.
 - `webview/index.html`: Webview entry.
-- `webview/src/App.tsx`: Top-level shell wrapping GitDataProvider and mounting Sidebar and MainContent.
+- `webview/src/App.tsx`: Top-level shell wrapping GitDataProvider and mounting Sidebar, MainContent, and modals.
 - `webview/src/GitDataContext.tsx`: Global React Context for all Git state and UI filter/tab state.
 - `webview/src/components/`: Modularized frontend UI tab panels:
   - `MainContent.tsx`: Dedicated container rendering the active tab content based on context.
@@ -127,6 +138,8 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
   - `LocalChangesTab.tsx`: File tree of changed files with selective staging checkboxes.
   - `StashTab.tsx`: List of stashes, stash forms, and stashed file difference inspectors.
   - `WorktreeTab.tsx`: Grid showing git worktrees with management action links.
+  - `SquashModal.tsx`: Squash message editor and AI refinement panel.
+  - `LocalHistoryTab.tsx`: Natural language search bar and snapshot history restore UI.
 - `webview/src/types.ts`: Shared TypeScript interface definitions for domain objects (Commit, GitStatus, Stash, Worktree).
 - `webview/src/utils.ts`: Shared UI utility helpers.
 - `webview/src/GitGraph.tsx`: Commit graph rendering on High-DPI canvas with theme MutationObserver.

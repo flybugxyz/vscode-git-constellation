@@ -338,6 +338,7 @@ input[type="checkbox"] {
 .status-deleted { color: #ff5555; text-decoration: line-through; }
 .status-renamed { color: #bd93f9; }
 .status-untracked { color: #d16969; }
+.status-conflicted { color: var(--vscode-list-invalidItemForeground, var(--vscode-errorForeground, #ff5555)); font-weight: bold; }
 
 .tree-item {
   display: flex;

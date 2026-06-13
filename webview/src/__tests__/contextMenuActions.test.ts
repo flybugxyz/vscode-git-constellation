@@ -276,7 +276,7 @@ describe('getCommitMenuItems', () => {
     expect(menuItems.find(i => i.action === 'createBranchFrom')?.disabled).toBe(true);
     // copySHA is inside a submenu, verify it's disabled there
     const copySubmenu = menuItems.find(i => i.label === 'Copy')?.submenu;
-    expect(copySubmenu?.find(s => 'action' in s && s.action === 'copySHA')?.disabled).toBe(true);
+    expect((copySubmenu?.find(s => 'action' in s && s.action === 'copySHA') as MenuItem | undefined)?.disabled).toBe(true);
   });
 
   it('enables squash when canSquash is true', () => {

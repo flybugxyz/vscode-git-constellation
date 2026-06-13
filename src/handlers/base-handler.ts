@@ -5,6 +5,7 @@ export interface IGitJBViewProvider {
   refresh(): Promise<void>;
   scheduleRefresh(): void;
   setFileFilter(file: string): void;
+  context: vscode.ExtensionContext;
 }
 
 export interface WebviewMessage {

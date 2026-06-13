@@ -73,7 +73,21 @@ export class GitWorktreeService {
     validateHash(hash);
     try {
       await git.raw(['worktree', 'add', '-b', branchName, path, 'HEAD']);
-      const wtGit = simpleGit(path);
+      const wtGit = simpleGit({
+        baseDir: path,
+        binary: 'git',
+        maxConcurrentProcesses: 6,
+        timeout: {
+          block: 15000
+        },
+        unsafe: {
+          allowUnsafeSshCommand: true
+        }
+      }).env({
+        ...process.env,
+        GIT_TERMINAL_PROMPT: '0',
+        GIT_SSH_COMMAND: 'ssh -o BatchMode=yes'
+      });
       await wtGit.raw(['cherry-pick', hash]);
       vscode.window.showInformationMessage(`Worktree created at ${path} on branch ${branchName} and cherry-picked commit ${hash.substring(0, 7)}.`);
     } catch (err) {

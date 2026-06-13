@@ -10,8 +10,8 @@ export interface IGitDataContext {
   gitData: GitData | null;
   setGitData: React.Dispatch<React.SetStateAction<GitData | null>>;
   
-  activeTab: 'log' | 'local' | 'stashes' | 'worktrees';
-  setActiveTab: React.Dispatch<React.SetStateAction<'log' | 'local' | 'stashes' | 'worktrees'>>;
+  activeTab: 'log' | 'local' | 'stashes' | 'worktrees' | 'history';
+  setActiveTab: React.Dispatch<React.SetStateAction<'log' | 'local' | 'stashes' | 'worktrees' | 'history'>>;
   
   checkedFiles: Set<string>;
   setCheckedFiles: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -53,7 +53,7 @@ const GitDataContext = createContext<IGitDataContext | undefined>(undefined);
 
 export function GitDataProvider({ children }: { children: ReactNode }) {
   const [gitData, setGitData] = useState<GitData | null>(null);
-  const [activeTab, setActiveTab] = useState<'log' | 'local' | 'stashes' | 'worktrees'>('log');
+  const [activeTab, setActiveTab] = useState<'log' | 'local' | 'stashes' | 'worktrees' | 'history'>('log');
   const [checkedFiles, setCheckedFiles] = useState<Set<string>>(new Set());
   const [selectedCommitFiles, setSelectedCommitFiles] = useState<{ hash: string; files: { status: string; path: string }[] } | null>(null);
   const [isCompareMode, setIsCompareMode] = useState(false);

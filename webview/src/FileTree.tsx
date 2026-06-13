@@ -15,6 +15,7 @@ interface FileTreeProps {
   rootNodeName?: string;
   expandedNodes?: Set<string>;
   setExpandedNodes?: React.Dispatch<React.SetStateAction<Set<string>>>;
+  onFileContextMenu?: (path: string, event: React.MouseEvent) => void;
 }
 
 interface TreeNode {
@@ -112,7 +113,8 @@ export const FileTree: React.FC<FileTreeProps> = ({
   onDiscard,
   rootNodeName,
   expandedNodes: propsExpandedNodes,
-  setExpandedNodes: propsSetExpandedNodes
+  setExpandedNodes: propsSetExpandedNodes,
+  onFileContextMenu
 }) => {
   const [localExpandedNodes, setLocalExpandedNodes] = useState<Set<string>>(new Set());
   const expandedNodes = propsExpandedNodes || localExpandedNodes;
@@ -209,6 +211,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
       case 'D': return 'status-deleted';
       case 'R': return 'status-renamed';
       case '?': return 'status-untracked';
+      case 'U': return 'status-conflicted';
       default: return '';
     }
   };
@@ -255,6 +258,11 @@ export const FileTree: React.FC<FileTreeProps> = ({
             className={`tree-item ${getStatusClass(node.status)}`} 
             style={{ paddingLeft: `${depth * 12}px` }}
             onClick={() => node.isFile ? (onFileClick && onFileClick(node.fullPath)) : toggleNode(node.fullPath, {} as any)}
+            onContextMenu={(e) => {
+              if (onFileContextMenu) {
+                onFileContextMenu(node.fullPath, e);
+              }
+            }}
           >
             <span 
               className={`tree-chevron codicon ${!node.isFile && hasChildren ? (isExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right') : ''}`}

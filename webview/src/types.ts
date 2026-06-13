@@ -63,6 +63,14 @@ export interface RepositoryInfo {
   isMain: boolean;
 }
 
+export interface Changelist {
+  id: string;
+  name: string;
+  filePaths: string[];
+  isDefault?: boolean;
+  isConflicts?: boolean;
+}
+
 export interface GitData {
   log: { all: Commit[] } | null;
   status: GitStatus | null;
@@ -74,6 +82,8 @@ export interface GitData {
   stashes?: Stash[];
   worktrees?: Worktree[];
   repositories?: RepositoryInfo[];
+  changelists?: Changelist[];
+  localHistoryEnabled?: boolean;
   activeRepo?: string;
 }
 
