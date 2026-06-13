@@ -9,7 +9,7 @@ export class GitStashService {
     const git = this.core.git;
     if (!git) return [];
     try {
-      const result = await git.raw(['stash', 'list', '--format=%H%x09%gd%x09%gB%x09%at%x00']);
+      const result = await git.raw(['stash', 'list', '--format=%H%x09%gd%x09%gs%x09%at%x00']);
       const entries = result.split('\0');
       return entries.map(entry => entry.trim()).filter(Boolean).map(entry => {
         const parts = entry.split('\t');
