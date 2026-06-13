@@ -15,15 +15,18 @@ GitConstellation is a VS Code extension that brings the highly acclaimed Git vis
     *   **Tree View**: Modified files are shown in a hierarchical tree with status-based coloring (Added, Modified, Deleted, Renamed, Untracked).
     *   **Commit Details**: View full commit messages (preserving newlines and multiline formatting), author information, and associated refs.
 *   **Integrated Diff Viewer**: Click on any file in the tree to open a side-by-side diff comparison in the main VS Code editor.
-*   **Local Changes Manager**: A dedicated tab to stage changes, write commit messages, and discard changes.
+*   **Local Changes Manager**: A dedicated tab to stage changes, write commit messages, and discard changes. Conflicted files are automatically isolated at the top with disabled checkboxes.
 *   **Stash Management**: A dedicated "Stashes" tab to view stashed changes, apply/pop/drop stashes.
 *   **Worktree Management**: A dedicated "Worktrees" tab to list and manage git worktrees (open in a new window, remove, or prune).
 *   **Submodule Management**: Integrated submodule branch sidebar to view and manage Git submodules effectively.
+*   **Local History View**: A dedicated "Local History" tab to view local file snapshots, track changes on save, restore older versions, and perform AI-powered semantic search.
+*   **Merge Assistant & AI Conflict Resolution**: Embedded CodeLens actions in conflicts to explain them with AI or preview semantic merges. Fully integrated into VS Code's 3-way merge editor.
 *   **File History View**: View a file's history via a simplified linear graph by right-clicking it in either the VS Code Explorer or the editor context menu. The active panel tab automatically switches to the "Log" tab.
 *   **Multi-Select & Operations**: Select multiple commits with Ctrl+click or Shift+click to perform batch cherry-pick or squash contiguous commits on the current branch.
-*   **Commit Editing**: Amend the HEAD commit message or rewrite older commit messages from the context menu.
+*   **Commit Editing**: Amend the HEAD commit message (with multi-line support) or rewrite older commit messages from the context menu.
 *   **Branch & Tag Switcher**: Easily search and filter commits by tags, local/remote branches, and pin branches with interactive search fields. Includes visual highlighting for the currently active branch.
-*   **Performance & UI**: Loading animations for Git operations and a configurable max commit list limit.
+*   **Bilingual Localization**: Seamlessly switch between English (`en`) and Chinese (`zh-CN`) via settings, affecting AI explanations and dialog notifications.
+*   **Performance & UI**: Webview panel caching to prevent full reloads when switching tabs, loading animations for Git operations, and a configurable max commit list limit.
 *   **Native Look & Feel**: Uses VS Code's standard Codicons and theme-aware styling for a seamless experience.
 
 ### 🤖 AI-Powered Features
@@ -31,6 +34,7 @@ GitConstellation is a VS Code extension that brings the highly acclaimed Git vis
 GitConstellation integrates with any OpenAI-compatible API (e.g. OpenAI, DeepSeek, Local LLMs, Gemini OpenAI interface) to streamline your Git workflow:
 
 *   **AI Commit Message Generation**: Generates clean, conventional commit messages based on the diff of selected files in the Local Changes panel. Click the AI magic wand icon next to the commit input box to trigger.
+*   **Streaming Token Output**: Stream AI-generated commit message recommendations token-by-token directly into the commit text box for a snappy experience.
 *   **AI Stash Description**: Automatically generates a concise summary (under 60 characters) of your stashed changes, saving you from writing temporary descriptions.
 *   **Highly Configurable**: Setup your custom API endpoint, API key, model name, and commit prompt templates directly in the VS Code Settings under `GitConstellation > OpenAI`.
 *   **Settings Validator**: Run the `Test OpenAI Settings` command from the settings page or command palette to verify API connectivity.
@@ -67,15 +71,18 @@ GitConstellation 是一款 VS Code 插件，旨在将深受好评的 JetBrains I
     *   **树状视图**：以层级树结构显示修改的文件，并根据 Git 状态（新增、修改、删除、重命名、未追踪）进行着色。
     *   **提交详情**：查看完整的提交信息（保留换行与多行格式）、作者详情及关联的引用（Refs）。
 *   **集成对比查看器**：点击文件树中的任何文件，即可在 VS Code 主编辑区直接打开双栏对比（Diff）窗口。
-*   **本地更改管理**：专门的标签页用于查看/撤销本地更改、暂存修改，支持一键提交或提交并推送。
+*   **本地更改管理**：专门的标签页用于查看/撤销本地更改、暂存修改，支持一键提交或提交并推送。自动将冲突文件隔离在最上方，并禁用其勾选框以防误提交。
 *   **Stash 暂存管理**：独立的 "Stashes" 标签页，用于查看所有 stash 列表、应用/弹出/丢弃 stash，以及支持清空所有 stash。
 *   **Worktree 工作树管理**：独立的 "Worktrees" 标签页，列出当前工作树并支持一键在新窗口打开、删除或修剪 (prune) 工作树。
 *   **Submodule 子模块管理**：集成的子模块分支侧边栏，支持高效查看和管理 Git 子模块。
+*   **本地历史视图 (Local History)**：独立的 "Local History" 标签页，用于自动跟踪文件保存快照、比较差异和回滚历史版本，支持通过 AI 进行智能语义搜索。
+*   **合并助手与 AI 冲突解决**：在检测到冲突的文件中自动插入 CodeLens，一键使用 AI 解释冲突或预览语义合并。深度集成 VS Code 原生 3向合并编辑器。
 *   **文件历史视图**：在 VS Code 资源管理器或编辑器右键菜单中选择“View File History (GitConstellation)”即可查看该文件的 Git 历史，并且插件面板会自动切换到“Log”标签页。
 *   **多选与批量操作**：支持按 Ctrl/Shift 键多选提交记录，支持批量 Cherry-pick 及压缩（Squash）当前分支上的连续提交。
-*   **编辑提交信息**：支持直接在右键菜单中修改（Amend）HEAD 提交信息，或者重写历史记录以修改旧提交的提交信息。
+*   **编辑提交信息**：支持直接在右键菜单中修改（Amend）HEAD 提交信息（支持多行输入），或者重写历史记录以修改旧提交的提交信息。
 *   **分支与标签过滤**：增强的下拉筛选菜单，支持按本地/远程分支、标签（Tag）过滤提交列表，并支持置顶（Pin）常用分支，提供交互式的搜索输入框。支持当前激活分支的可视化高亮显示。
-*   **性能与交互**：支持 Git 操作加载动画，以及可配置的最大提交列表数量限制。
+*   **中英文双语切换**：在设置中可自由切换英文 (`en`) 与中文 (`zh-CN`)，AI 解释、相关对话框和通知会相应实现本地化。
+*   **性能与交互**：支持 Webview 标签页缓存防止切换时重新加载，支持 Git 操作加载动画，以及可配置的最大提交列表数量限制。
 *   **原生集成**：使用 VS Code 标准的 Codicons 图标库，并适配编辑器主题，确保完美的视觉集成。
 
 ### 🤖 AI 智能辅助功能
@@ -83,6 +90,7 @@ GitConstellation 是一款 VS Code 插件，旨在将深受好评的 JetBrains I
 GitConstellation 集成了对任何 OpenAI 兼容 API（例如 OpenAI、DeepSeek、本地大模型、Gemini OpenAI 接口等）的支持，让你的 Git 工作流更加高效：
 
 *   **AI 提交信息生成**：基于你在“本地更改”面板中选中的文件差异（Diff），一键生成符合规范（Conventional Commit）的提交信息。只需点击输入框旁边的 AI 魔法棒图标即可。
+*   **流式 Token 输出**：AI 提交信息生成支持逐字流式输出，实时更新输入框内容，交互更流畅。
 *   **AI Stash 暂存描述**：自动为你暂存的改动生成简明扼要的摘要描述（控制在 60 字符以内），告别手动填写临时说明。
 *   **灵活的自定义配置**：可在 VS Code 设置项 `GitConstellation > OpenAI` 中直接配置自定义 API 地址（API URL）、API 密钥（API Key）、模型名称（Model）以及自定义 System Prompt 模板。
 *   **一键配置测试**：可在设置页面或命令面板中运行 `Test OpenAI Settings` 命令来快速验证 API 连通性。

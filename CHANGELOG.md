@@ -2,6 +2,26 @@
 
 All notable changes to the **GitConstellation** extension will be documented in this file.
 
+## [1.0.5] - 2026-06-13
+
+### Added
+- **Local History Tracking**: Added a dedicated "Local History" tab for viewing local file history snapshots. Automatically tracks file saves, performs automated cleanup of old snapshots, and integrates with OpenAI for semantic search of historical changes.
+- **Merge Assistant & Conflict Resolution**: Scans files for conflict markers to add inline CodeLens actions (`Explain Conflict with AI` and `Semantic Merge Preview`). Integrates with VS Code's 3-way merge editor as toolbar actions and context menu items, with smart conflict block targeting.
+- **Chinese Language Toggle**: Added configuration `git-constellation.openai.language` to switch between English (`en`) and Chinese (`zh-CN`), translating AI instructions and localizing assistant views/dialogs.
+- **Isolate Conflicted Files**: Automatically groups conflicted files into a virtual, non-deletable "Conflicts" list at the top of the Local Changes panel, disabling checkboxes to prevent committing conflicts.
+- **Streaming AI Commit Messages**: Implemented streaming token generation for AI commit message suggestions, displaying progress incrementally inside the Local Changes commit message input.
+- **Multi-line Commit Message Rewording**: Replaced the reword/edit commit message dialog's single-line text input with a multi-line textarea, preserving and rendering formatting correctly.
+- **Upstream Branch Inclusion**: Extended commit log queries to include upstream branches.
+
+### Changed
+- **Default Commit Limit**: Set default maximum displayed commits (`git-constellation.maxCommits`) to 100.
+- **UI Caching**: Implemented DOM-level caching for tabs in the main extension view to prevent webview reloads and preserve scroll/state when switching tabs.
+- **Branch/Tag Filter Optimization**: Prevented redundant repository refreshes when clicking the already-active branch in the sidebar.
+
+### Fixed
+- **Stash Message Format**: Corrected the Git log format parameter for stashes to retrieve and render the actual user-provided stash messages instead of branch names.
+- **Package Manifest Warning**: Added missing `icon` field to `package.json` for extension marketplace validation.
+
 ## [1.0.4] - 2026-06-11
 
 ### Added

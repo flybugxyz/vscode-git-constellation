@@ -87,6 +87,13 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - **Smart Active Conflict Detection**: If invoked inside the merge editor, it will check if the user's cursor is currently inside a specific conflict block to resolve/explain it. Otherwise, it will automatically target the first conflict block in the document.
 - **Language Localization**: Supports toggle config `git-constellation.openai.language` (English `en` vs Chinese `zh-CN`). Translates AI instructions to respond in Simplified Chinese, and localizes all VS Code assistant dialogs, buttons, and notifications.
 
+### 11. Local History (`src/services/git-local-history.ts` & `webview/src/components/LocalHistoryTab.tsx`)
+- **Integration**: Access via "Local History" tab in main UI (configurable toggle `git-constellation.localHistory.enabled`).
+- **Tracking & Storage**: Tracks snapshots of files automatically on save. Snapshots are stored under the plugin's global storage directory `local-history`.
+- **Auto-Cleanup**: Automatically clean up snapshots based on age and max storage limits to prevent excessive disk consumption.
+- **AI Semantic Search**: Integrates with OpenAI to allow natural language semantic search of local history diffs and summaries.
+- **Operations**: Diff snapshots side-by-side or restore files to a specific snapshot state.
+
 ## Maintenance Guidelines
 - **Building**: Always run `npm run compile` to build both Webview (Vite) and Extension (Webpack).
 - **Styling**: Prefer `var(--vscode-*)` variables for theme compatibility.
