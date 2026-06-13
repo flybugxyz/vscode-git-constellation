@@ -2,6 +2,7 @@ import React from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Sidebar } from './components/Sidebar';
 import { MainContent } from './components/MainContent';
+import { RewordModal } from './components/RewordModal';
 import { GitDataProvider, useGitData } from './GitDataContext';
 import { useVSCodeMessaging } from './hooks/useVSCodeMessaging';
 import { useCommitSelection } from './hooks/useCommitSelection';
@@ -25,7 +26,7 @@ function AppContent() {
     },
   });
 
-  const { menuState, openContextMenu, handleCloseMenu, handleMenuAction } = useContextMenuState(selection);
+  const { menuState, openContextMenu, handleCloseMenu, handleMenuAction, rewordModal, setRewordModal } = useContextMenuState(selection);
 
   return (
     <ErrorBoundary vscode={vscode}>
@@ -39,6 +40,16 @@ function AppContent() {
           handleMenuAction={handleMenuAction}
         />
       </div>
+      <RewordModal
+        isOpen={!!rewordModal}
+        hash={rewordModal?.hash || ''}
+        initialMessage={rewordModal?.currentMessage || ''}
+        onClose={() => setRewordModal(null)}
+        onSubmit={(hash, message) => {
+          vscode.postMessage({ type: 'rewordCommitSubmit', hash, message });
+          setRewordModal(null);
+        }}
+      />
     </ErrorBoundary>
   );
 }

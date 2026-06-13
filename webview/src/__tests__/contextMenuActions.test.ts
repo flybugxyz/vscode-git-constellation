@@ -7,8 +7,7 @@ import {
   getStashMenuItems,
   MenuActionCallbacks,
 } from '../contextMenuActions';
-import type { MenuState } from '../App';
-import type { Commit } from '../types';
+import type { MenuState, Commit } from '../types';
 import type { MenuEntry, MenuItem } from '../ContextMenu';
 
 function createCallbacks(overrides?: Partial<MenuActionCallbacks>): MenuActionCallbacks {
@@ -138,6 +137,17 @@ describe('dispatchMenuAction', () => {
       dispatchMenuAction(menu, 'rewordCommit', cb);
 
       expect(cb.postMessage).toHaveBeenCalledWith({ type: 'rewordCommit', hash: 'abc123def456' });
+    });
+
+    it('rewordCommit calls onRewordCommit callback if defined', () => {
+      const onRewordCommit = vi.fn();
+      const cb = createCallbacks({ onRewordCommit });
+      const menu: MenuState = { kind: 'commit', commit: sampleCommit, index: 0, x: 0, y: 0 };
+
+      dispatchMenuAction(menu, 'rewordCommit', cb);
+
+      expect(onRewordCommit).toHaveBeenCalledWith('abc123def456', 'feat: add feature');
+      expect(cb.postMessage).not.toHaveBeenCalled();
     });
 
     it('viewDetails sets UI state and fetches diff', () => {

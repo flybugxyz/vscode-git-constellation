@@ -100,6 +100,20 @@ export async function handleCommitMessage(
       return true;
     }
 
+    case 'rewordCommitSubmit': {
+      const finalMessage = data.message.trim();
+      if (!finalMessage) {
+        vscode.window.showErrorMessage('Commit message cannot be empty.');
+        return true;
+      }
+      
+      const success = await gitService.rewordCommit(data.hash, finalMessage);
+      if (success) {
+        provider.refresh();
+      }
+      return true;
+    }
+
     case 'revertCommit':
       await gitService.revertCommit(data.hash);
       provider.refresh();

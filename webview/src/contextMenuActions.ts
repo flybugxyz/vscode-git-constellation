@@ -16,6 +16,7 @@ export interface MenuActionCallbacks {
   /** All commits for resolving indices to hashes */
   getAllCommitHashes: (indices: number[]) => string[];
   selectedIndices: number[];
+  onRewordCommit?: (hash: string, currentMessage: string) => void;
 }
 
 /**
@@ -152,7 +153,11 @@ function dispatchCommitAction(
       break;
     }
     case 'rewordCommit':
-      cb.postMessage({ type: 'rewordCommit', hash: commit.hash });
+      if (cb.onRewordCommit) {
+        cb.onRewordCommit(commit.hash, commit.message);
+      } else {
+        cb.postMessage({ type: 'rewordCommit', hash: commit.hash });
+      }
       break;
     case 'revertCommit':
       cb.postMessage({ type: 'revertCommit', hash: commit.hash });

@@ -989,3 +989,159 @@ body.resizing-row * {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* Modal Dialog Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: modal-fade-in 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-container {
+  background-color: var(--vscode-editorWidget-background, var(--vscode-sideBar-background, #252526));
+  color: var(--vscode-foreground, #cccccc);
+  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border, #454545));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  width: 500px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modal-scale-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modal-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-header {
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom: var(--jb-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--vscode-panel-background, rgba(0, 0, 0, 0.1));
+  user-select: none;
+}
+
+.modal-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-close-button {
+  background: transparent;
+  border: none;
+  color: var(--vscode-foreground);
+  opacity: 0.65;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: opacity 0.1s, background-color 0.1s;
+}
+
+.modal-close-button:hover {
+  opacity: 1;
+  background-color: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.08));
+}
+
+.modal-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-textarea {
+  background-color: var(--vscode-input-background, #3c3c3c);
+  color: var(--vscode-input-foreground, #cccccc);
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border, #3c3c3c));
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 12px);
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 140px;
+  max-height: 400px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.modal-textarea:focus {
+  border-color: var(--vscode-focusBorder, #007acc);
+}
+
+.modal-footer {
+  padding: 12px 16px;
+  border-top: var(--jb-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background-color: var(--vscode-panel-background, rgba(0, 0, 0, 0.05));
+}
+
+.modal-button {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  outline: none;
+}
+
+.modal-button-primary {
+  background-color: var(--vscode-button-background, #007acc);
+  color: var(--vscode-button-foreground, #ffffff);
+  border: none;
+}
+
+.modal-button-primary:hover {
+  background-color: var(--vscode-button-hoverBackground, #0062a3);
+}
+
+.modal-button-secondary {
+  background-color: var(--vscode-button-secondaryBackground, #3a3d3d);
+  color: var(--vscode-button-secondaryForeground, #ffffff);
+  border: 1px solid var(--vscode-button-secondaryBorder, transparent);
+}
+
+.modal-button-secondary:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground, #4c4f4f);
+}
+
+.modal-help-text {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #858585);
+  display: flex;
+  justify-content: space-between;
+}

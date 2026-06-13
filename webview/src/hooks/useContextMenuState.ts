@@ -6,6 +6,7 @@ import { UseCommitSelectionReturn } from './useCommitSelection';
 
 export function useContextMenuState(selection: UseCommitSelectionReturn) {
   const [menuState, setMenuState] = useState<MenuState | null>(null);
+  const [rewordModal, setRewordModal] = useState<{ hash: string; currentMessage: string } | null>(null);
   
   const { 
     vscode, 
@@ -51,6 +52,9 @@ export function useContextMenuState(selection: UseCommitSelectionReturn) {
       getAllCommitHashes: (indices: number[]) =>
         indices.map(i => gitData?.log?.all?.[i]?.hash).filter((h): h is string => !!h),
       selectedIndices: selection.selectedIndices,
+      onRewordCommit: (hash: string, currentMessage: string) => {
+        setRewordModal({ hash, currentMessage });
+      }
     });
     setMenuState(null);
   }, [
@@ -63,6 +67,8 @@ export function useContextMenuState(selection: UseCommitSelectionReturn) {
     menuState,
     openContextMenu,
     handleCloseMenu,
-    handleMenuAction
+    handleMenuAction,
+    rewordModal,
+    setRewordModal
   };
 }
