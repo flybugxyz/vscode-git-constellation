@@ -17,6 +17,9 @@ export function Sidebar({ openContextMenu, menuState }: SidebarProps) {
   const branchSearchInputRef = useRef<HTMLInputElement>(null);
 
   const handleFilter = (branch: string) => {
+    if (branch === filterBranch) {
+      return;
+    }
     setFilterBranch(branch);
     setIsFetching(true);
     vscode.postMessage({ type: 'setFilter', branch });
