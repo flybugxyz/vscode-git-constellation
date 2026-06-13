@@ -5,7 +5,8 @@ export function requestAIApi(
   apiUrl: string,
   apiKey: string,
   body: any,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onChunk?: (text: string) => void
 ): Promise<any> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
@@ -17,6 +18,10 @@ export function requestAIApi(
       url = new URL(apiUrl);
     } catch (e) {
       return reject(new Error('Invalid API URL'));
+    }
+
+    if (onChunk) {
+      body = { ...body, stream: true };
     }
 
     // Security policy removed to allow local models on custom network hostnames via HTTP.
@@ -37,8 +42,42 @@ export function requestAIApi(
 
     const client = url.protocol === 'https:' ? https : http;
     const req = client.request(options, (res) => {
+      const isStream = !!onChunk && res.statusCode && res.statusCode < 400;
       let data = '';
-      res.on('data', (chunk) => data += chunk);
+      let buffer = '';
+      let accumulatedText = '';
+
+      res.on('data', (chunk) => {
+        if (isStream) {
+          buffer += chunk.toString();
+          let lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            if (trimmed.startsWith('data:')) {
+              const dataStr = trimmed.slice(5).trim();
+              if (dataStr === '[DONE]') {
+                continue;
+              }
+              try {
+                const parsed = JSON.parse(dataStr);
+                const content = parsed.choices?.[0]?.delta?.content;
+                if (content) {
+                  onChunk(content);
+                  accumulatedText += content;
+                }
+              } catch (e) {
+                // Ignore parse errors on SSE format in case of intermediate/malformed chunks
+              }
+            }
+          }
+        } else {
+          data += chunk;
+        }
+      });
+
       res.on('end', () => {
         if (res.statusCode && res.statusCode >= 400) {
           try {
@@ -48,10 +87,39 @@ export function requestAIApi(
             return reject(new Error(`HTTP ${res.statusCode}: ${data}`));
           }
         }
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error('Invalid JSON response from API'));
+
+        if (isStream) {
+          if (buffer) {
+            const trimmed = buffer.trim();
+            if (trimmed.startsWith('data:')) {
+              const dataStr = trimmed.slice(5).trim();
+              if (dataStr !== '[DONE]') {
+                try {
+                  const parsed = JSON.parse(dataStr);
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  if (content) {
+                    onChunk(content);
+                    accumulatedText += content;
+                  }
+                } catch (e) {
+                  // Ignore
+                }
+              }
+            }
+          }
+          resolve({
+            choices: [{
+              message: {
+                content: accumulatedText
+              }
+            }]
+          });
+        } else {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error('Invalid JSON response from API'));
+          }
         }
       });
     });

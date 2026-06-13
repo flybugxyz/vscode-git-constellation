@@ -3,6 +3,7 @@ import { useGitData } from '../GitDataContext';
 
 export function useVSCodeMessaging(callbacks: {
   onCommitMessageGenerated?: (msg: string) => void;
+  onCommitMessageProgress?: (chunk: string) => void;
   onStashMessageGenerated?: (msg: string) => void;
   onStopLoadingState?: () => void;
 }) {
@@ -86,6 +87,12 @@ export function useVSCodeMessaging(callbacks: {
           if (message.error && callbacks.onCommitMessageGenerated) {
              // Handle error if needed, or pass empty. But UI can clear generating state.
              callbacks.onCommitMessageGenerated(message.message || '');
+          }
+          break;
+        }
+        case 'generateCommitMessageProgress': {
+          if (message.chunk && callbacks.onCommitMessageProgress) {
+            callbacks.onCommitMessageProgress(message.chunk);
           }
           break;
         }

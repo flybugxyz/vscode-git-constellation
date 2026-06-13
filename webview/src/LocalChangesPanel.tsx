@@ -79,6 +79,7 @@ export function LocalChangesPanel({
   const handleGenerateAI = () => {
     if (checkedFiles.size === 0) return;
     setIsGenerating(true);
+    setCommitMessage('');
     vscode.postMessage({ type: 'generateCommitMessage', files: Array.from(checkedFiles) });
   };
 

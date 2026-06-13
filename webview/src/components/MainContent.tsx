@@ -176,6 +176,11 @@ export function MainContent({
           setCommitMessage(event.data.message);
         }
       }
+      if (event.data.type === 'generateCommitMessageProgress') {
+        if (event.data.chunk) {
+          setCommitMessage(prev => prev + event.data.chunk);
+        }
+      }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);

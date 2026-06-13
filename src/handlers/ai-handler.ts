@@ -59,7 +59,9 @@ export async function handleAIMessage(
               { role: 'system', content: prompt },
               { role: 'user', content: `Here is the git diff:\n\n${diff}` }
             ]
-          }, signal);
+          }, signal, (chunk) => {
+            webview.postMessage({ type: 'generateCommitMessageProgress', chunk });
+          });
 
           if (signal.aborted) return;
 
