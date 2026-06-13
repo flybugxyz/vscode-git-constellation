@@ -13,7 +13,15 @@ export function activate(context: vscode.ExtensionContext) {
   const provider = new GitJBViewProvider(context.extensionUri, gitService);
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(GitJBViewProvider.viewType, provider)
+    vscode.window.registerWebviewViewProvider(
+      GitJBViewProvider.viewType,
+      provider,
+      {
+        webviewOptions: {
+          retainContextWhenHidden: true
+        }
+      }
+    )
   );
 
   context.subscriptions.push(
@@ -226,8 +234,9 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     console.log(`GitJBViewProvider: Refreshing with filter: ${this._currentFilter}...`);
     if (this._view) {
       try {
+        const maxCommits = vscode.workspace.getConfiguration('git-constellation').get<number>('maxCommits') ?? 100;
         const [log, status, branches, tags, authors, currentUser, stashes, worktrees, repositories] = await Promise.all([
-          this._gitService.getLog(this._currentFilter, this._currentAuthorFilter, this._currentSearchFilter, this._currentFileFilter),
+          this._gitService.getLog(this._currentFilter, this._currentAuthorFilter, this._currentSearchFilter, this._currentFileFilter, 0, maxCommits),
           this._gitService.getStatus(),
           this._gitService.getBranches(),
           this._gitService.getTags(),

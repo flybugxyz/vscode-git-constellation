@@ -40,7 +40,7 @@ A VS Code extension mimicking the JetBrains Git UI experience. Located in the `v
 - **Icons**: Mapped to common file extensions using Codicons.
 
 ### 4. Side Pane & Top Layout
-- **Tabs**: Main navigation across Log, Local Changes, Stashes, Worktrees. Includes a global Refresh button (`codicon-refresh`) to manually trigger a git state sync when file watchers miss changes.
+- **Tabs**: Main navigation across Log, Local Changes, Stashes, Worktrees. Includes a global Refresh button (`codicon-refresh`) to manually trigger a git state sync when file watchers miss changes. Tabs are kept permanently mounted in the DOM and toggled using CSS `display` to preserve their internal states and scroll positions.
 - **Side Pane**: Split into Changed Files (top) and Commit Details (bottom). Both sections are collapsible with persistent state in the session.
 
 ### 5. Context Menus & Git Operations

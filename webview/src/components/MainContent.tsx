@@ -219,49 +219,52 @@ export function MainContent({
       </div>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }} className="main-content">
-        {activeTab === 'log' ? (
-        <LogTab
-          isPulling={isPulling}
-          setIsPulling={setIsPulling}
-          isPushing={isPushing}
-          setIsPushing={setIsPushing}
-          graphWidth={graphWidth}
-          setGraphWidth={setGraphWidth}
-          descWidth={descWidth}
-          authorWidth={authorWidth}
-          dateWidth={dateWidth}
-          startColumnResize={startColumnResize}
-          actualTheadHeight={actualTheadHeight}
-          actualRowHeight={actualRowHeight}
-          theadRef={theadRef}
-          tbodyRef={tbodyRef}
-          selection={selection}
-          handleRowMouseEnter={handleRowMouseEnter}
-          handleRowMouseMove={handleRowMouseMove}
-          handleRowMouseLeave={handleRowMouseLeave}
-          handleTableScroll={handleTableScroll}
-          renderRefs={renderRefs}
-          openContextMenu={openContextMenu}
-        />
-      ) : activeTab === 'local' ? (
-        <LocalChangesTab
-          commitBoxHeight={commitBoxHeight}
-          onStartResizeCommitBox={startCommitBoxResize}
-          isGenerating={isGenerating}
-          setIsGenerating={setIsGenerating}
-          commitMessage={commitMessage}
-          setCommitMessage={setCommitMessage}
-          commitActionState={commitActionState}
-          setCommitActionState={setCommitActionState}
-        />
-      ) : activeTab === 'stashes' ? (
-        <StashTab
-          openContextMenu={openContextMenu}
-          renderRefs={renderRefs}
-        />
-      ) : (
-        <WorktreeTab />
-      )}
+        <div style={{ display: activeTab === 'log' ? 'flex' : 'none', flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
+          <LogTab
+            isPulling={isPulling}
+            setIsPulling={setIsPulling}
+            isPushing={isPushing}
+            setIsPushing={setIsPushing}
+            graphWidth={graphWidth}
+            setGraphWidth={setGraphWidth}
+            descWidth={descWidth}
+            authorWidth={authorWidth}
+            dateWidth={dateWidth}
+            startColumnResize={startColumnResize}
+            actualTheadHeight={actualTheadHeight}
+            actualRowHeight={actualRowHeight}
+            theadRef={theadRef}
+            tbodyRef={tbodyRef}
+            selection={selection}
+            handleRowMouseEnter={handleRowMouseEnter}
+            handleRowMouseMove={handleRowMouseMove}
+            handleRowMouseLeave={handleRowMouseLeave}
+            handleTableScroll={handleTableScroll}
+            renderRefs={renderRefs}
+            openContextMenu={openContextMenu}
+          />
+        </div>
+        <div style={{ display: activeTab === 'local' ? 'flex' : 'none', flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
+          <LocalChangesTab
+            commitBoxHeight={commitBoxHeight}
+            onStartResizeCommitBox={startCommitBoxResize}
+            isGenerating={isGenerating}
+            setIsGenerating={setIsGenerating}
+            commitMessage={commitMessage}
+            setCommitMessage={setCommitMessage}
+            commitActionState={commitActionState}
+            setCommitActionState={setCommitActionState}
+          />
+        </div>
+        <div style={{ display: activeTab === 'stashes' ? 'flex' : 'none', flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
+          <StashTab
+            openContextMenu={openContextMenu}
+            renderRefs={renderRefs}
+          />
+        </div>
+        <div style={{ display: activeTab === 'worktrees' ? 'flex' : 'none', flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
+          <WorktreeTab />
+        </div>
 
       {menuState && (
         <ContextMenu

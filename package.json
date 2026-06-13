@@ -74,7 +74,7 @@
         },
         "git-constellation.maxCommits": {
           "type": "number",
-          "default": 1000,
+          "default": 100,
           "description": "Maximum number of commits to display in the log. Set to 0 for unlimited (not recommended for large repositories)."
         }
       }
