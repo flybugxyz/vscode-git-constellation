@@ -99,6 +99,17 @@ export function activate(context: vscode.ExtensionContext) {
           provider.setFileFilter(relativePath);
         }
       }
+    }),
+    vscode.commands.registerCommand('git-constellation.viewFileLocalHistory', async (uri?: vscode.Uri) => {
+      const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+      if (targetUri && targetUri.scheme === 'file') {
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (workspaceRoot) {
+          const relativePath = path.relative(workspaceRoot, targetUri.fsPath).replace(/\\/g, '/');
+          await vscode.commands.executeCommand('git-constellation.log.focus');
+          provider.setLocalHistoryFileFilter(relativePath);
+        }
+      }
     })
   );
 
@@ -154,7 +165,8 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
   private _currentSearchFilter: string = '';
   private _currentFileFilter: string = '';
   private _refreshTimer?: NodeJS.Timeout;
-  private _pendingTabSelection?: 'log' | 'local' | 'stashes' | 'worktrees';
+  private _pendingTabSelection?: 'log' | 'local' | 'stashes' | 'worktrees' | 'history';
+  private _pendingLocalHistorySearch?: string;
 
   public setFileFilter(file: string) {
     this._currentFileFilter = file;
@@ -162,6 +174,18 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
     if (this._view) {
       this._view.show?.(true);
       this._view.webview.postMessage({ type: 'selectTab', tab: 'log' });
+    }
+    this.refresh();
+  }
+
+  public setLocalHistoryFileFilter(file: string) {
+    this._pendingTabSelection = 'history';
+    this._pendingLocalHistorySearch = file;
+    if (this._view) {
+      this._view.show?.(true);
+      this._view.webview.postMessage({ type: 'selectTab', tab: 'history' });
+      this._view.webview.postMessage({ type: 'searchLocalHistoryForFile', filePath: file });
+      this._pendingLocalHistorySearch = undefined;
     }
     this.refresh();
   }
@@ -210,6 +234,13 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           case 'ready':
           case 'refresh':
             this.refresh();
+            if (this._pendingLocalHistorySearch) {
+              webviewView.webview.postMessage({ 
+                type: 'searchLocalHistoryForFile', 
+                filePath: this._pendingLocalHistorySearch 
+              });
+              this._pendingLocalHistorySearch = undefined;
+            }
             break;
           case 'searchLocalHistory': {
             const result = await this._localHistoryService.search(data.query);
@@ -219,6 +250,32 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
               message: result.message, 
               error: result.error 
             });
+            break;
+          }
+          case 'diffLocalHistory': {
+            const { filePath, timestamp } = data;
+            const snapFile = path.join(this._localHistoryService.historyDir, filePath, `${timestamp}.txt`);
+            if (fs.existsSync(snapFile)) {
+              const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+              if (workspaceRoot) {
+                const currentFilePath = path.join(workspaceRoot, filePath);
+                if (fs.existsSync(currentFilePath)) {
+                  const leftUri = vscode.Uri.file(snapFile);
+                  const rightUri = vscode.Uri.file(currentFilePath);
+                  const title = `${path.basename(filePath)} (Snapshot ${new Date(timestamp).toLocaleString()} vs Current)`;
+                  vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title);
+                } else {
+                  vscode.window.showWarningMessage(`Workspace file "${filePath}" does not exist currently. Opening historical snapshot...`);
+                  const leftUri = vscode.Uri.file(snapFile);
+                  const doc = await vscode.workspace.openTextDocument(leftUri);
+                  await vscode.window.showTextDocument(doc, { preview: false });
+                }
+              } else {
+                vscode.window.showErrorMessage('Workspace folder not found.');
+              }
+            } else {
+              vscode.window.showErrorMessage('Snapshot file not found.');
+            }
             break;
           }
           case 'openSettings': {

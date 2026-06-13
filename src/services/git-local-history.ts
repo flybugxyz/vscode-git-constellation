@@ -186,20 +186,22 @@ export class GitLocalHistoryService {
         const snapFilePath = path.join(this.historyDir, entry.filePath, `${entry.timestamp}.txt`);
         let codeBlock = '';
         if (fs.existsSync(snapFilePath)) {
-          codeBlock = fs.readFileSync(snapFilePath, 'utf8');
+          const currContent = fs.readFileSync(snapFilePath, 'utf8');
+          const prevContent = this.getPrevContent(index, entry);
+          codeBlock = this.getDiffLines(prevContent, currContent);
         }
         return {
           filePath: entry.filePath,
           timestamp: entry.timestamp,
-          codeBlock: codeBlock.substring(0, 1500) + (codeBlock.length > 1500 ? '\n// ... (truncated)' : ''),
+          codeBlock,
           explanation: `Lines changed: +${entry.addedLines} -${entry.removedLines}`
         };
       });
       return { results, message: 'Showing recent local history snapshots.' };
     }
 
-    // Basic query analyzer: extract keywords (alphanumeric only)
-    const keywords = query.toLowerCase().match(/[a-z0-9_]{3,}/g) || [];
+    // Basic query analyzer: extract keywords (alphanumeric and Chinese characters)
+    const keywords = query.toLowerCase().match(/[a-z0-9_]{3,}|[\u4e00-\u9fa5]+/gi) || [];
     
     // Step 1: Filter entries by keyword match (crude scoring)
     const candidates = index.map(entry => {
@@ -211,10 +213,26 @@ export class GitLocalHistoryService {
           score += 10;
         }
       });
+
+      // Also match keywords in snapshot code content
+      const snapFilePath = path.join(this.historyDir, entry.filePath, `${entry.timestamp}.txt`);
+      if (fs.existsSync(snapFilePath)) {
+        try {
+          const content = fs.readFileSync(snapFilePath, 'utf8').toLowerCase();
+          keywords.forEach(kw => {
+            if (content.includes(kw)) {
+              score += 5; // Content match gets +5 points
+            }
+          });
+        } catch (e) {
+          // ignore read errors
+        }
+      }
+
       return { entry, score };
     }).filter(c => c.score > 0 || keywords.length === 0)
       .sort((a, b) => b.score - a.score || b.entry.timestamp - a.entry.timestamp)
-      .slice(0, 8); // take top 8 candidates
+      .slice(0, 15); // take top 15 candidates to allow AI to see a wider history window
 
     if (candidates.length === 0) {
       // If keyword matching has no candidates, fall back to recent snapshots
@@ -229,13 +247,23 @@ export class GitLocalHistoryService {
     const model = config.get<string>('model');
 
     if (!apiKey || !apiUrl) {
-      // No AI config, just return basic list of candidates
+      // No AI config, just return basic list of candidates with diffs
       return {
-        results: candidates.map(c => ({
-          filePath: c.entry.filePath,
-          timestamp: c.entry.timestamp,
-          summary: 'AI is not configured. Showing keyword matching candidate.'
-        }))
+        results: candidates.map(c => {
+          const snapFilePath = path.join(this.historyDir, c.entry.filePath, `${c.entry.timestamp}.txt`);
+          let diffBlock = '';
+          if (fs.existsSync(snapFilePath)) {
+            const currContent = fs.readFileSync(snapFilePath, 'utf8');
+            const prevContent = this.getPrevContent(index, c.entry);
+            diffBlock = this.getDiffLines(prevContent, currContent);
+          }
+          return {
+            filePath: c.entry.filePath,
+            timestamp: c.entry.timestamp,
+            codeBlock: diffBlock,
+            explanation: 'AI is not configured. Showing keyword matching candidate.'
+          };
+        })
       };
     }
 
@@ -244,13 +272,17 @@ export class GitLocalHistoryService {
       const snapFilePath = path.join(this.historyDir, c.entry.filePath, `${c.entry.timestamp}.txt`);
       let contentSample = '';
       if (fs.existsSync(snapFilePath)) {
-        const fullContent = fs.readFileSync(snapFilePath, 'utf8');
-        contentSample = fullContent.substring(0, 2000); // Send first 2000 chars to avoid token limit
+        const currContent = fs.readFileSync(snapFilePath, 'utf8');
+        const prevContent = this.getPrevContent(index, c.entry);
+        contentSample = this.getDiffLines(prevContent, currContent);
+        if (contentSample.length > 3000) {
+          contentSample = contentSample.substring(0, 3000) + '\n// ... (truncated)';
+        }
       }
       return `[Candidate #${idx}]
 File: ${c.entry.filePath}
 Saved At: ${new Date(c.entry.timestamp).toLocaleString()}
-Code Sample:
+Changes:
 ${contentSample}
 ------------------------------------`;
     }).join('\n\n');
@@ -284,30 +316,148 @@ Respond in structured JSON format:
 
         if (parsed.found && parsed.matchIndex !== undefined && parsed.matchIndex >= 0) {
           const match = candidates[parsed.matchIndex].entry;
+          const snapFilePath = path.join(this.historyDir, match.filePath, `${match.timestamp}.txt`);
+          let diffBlock = '';
+          if (fs.existsSync(snapFilePath)) {
+            const currContent = fs.readFileSync(snapFilePath, 'utf8');
+            const prevContent = this.getPrevContent(index, match);
+            diffBlock = this.getDiffLines(prevContent, currContent);
+          }
           return {
             results: [{
               filePath: match.filePath,
               timestamp: match.timestamp,
-              codeBlock: parsed.codeBlock,
+              codeBlock: diffBlock || parsed.codeBlock,
               explanation: parsed.explanation
             }]
           };
         } else {
-          return { results: [], message: 'AI could not find a matching code block in the snapshots.' };
+          // Fallback: return raw list of candidates with diffs
+          const results = candidates.map(c => {
+            const snapFilePath = path.join(this.historyDir, c.entry.filePath, `${c.entry.timestamp}.txt`);
+            let diffBlock = '';
+            if (fs.existsSync(snapFilePath)) {
+              const currContent = fs.readFileSync(snapFilePath, 'utf8');
+              const prevContent = this.getPrevContent(index, c.entry);
+              diffBlock = this.getDiffLines(prevContent, currContent);
+            }
+            return {
+              filePath: c.entry.filePath,
+              timestamp: c.entry.timestamp,
+              codeBlock: diffBlock,
+              explanation: 'AI did not find a precise match. Showing keyword match candidate.'
+            };
+          });
+          return { results, message: 'AI did not find a precise match. Showing keyword match candidates instead.' };
         }
       } else {
         throw new Error('Unexpected response format from LLM');
       }
     } catch (err: any) {
       console.error('Failed to run AI Local History Search:', err);
-      // Fallback: return raw list of candidates
+      // Fallback: return raw list of candidates with diffs
       return {
-        results: candidates.map(c => ({
-          filePath: c.entry.filePath,
-          timestamp: c.entry.timestamp,
-          summary: `Keyword match score: ${c.score}. AI Search failed: ${err.message}`
-        }))
+        results: candidates.map(c => {
+          const snapFilePath = path.join(this.historyDir, c.entry.filePath, `${c.entry.timestamp}.txt`);
+          let diffBlock = '';
+          if (fs.existsSync(snapFilePath)) {
+            const currContent = fs.readFileSync(snapFilePath, 'utf8');
+            const prevContent = this.getPrevContent(index, c.entry);
+            diffBlock = this.getDiffLines(prevContent, currContent);
+          }
+          return {
+            filePath: c.entry.filePath,
+            timestamp: c.entry.timestamp,
+            codeBlock: diffBlock,
+            explanation: `Keyword match score: ${c.score}. AI Search failed: ${err.message}`
+          };
+        })
       };
     }
+  }
+
+  private getPrevContent(index: HistoryIndexEntry[], entry: HistoryIndexEntry): string {
+    const fileEntries = index
+      .filter(e => e.filePath === entry.filePath && e.timestamp < entry.timestamp)
+      .sort((a, b) => b.timestamp - a.timestamp);
+    if (fileEntries.length > 0) {
+      const prevSnapFile = path.join(this.historyDir, entry.filePath, `${fileEntries[0].timestamp}.txt`);
+      if (fs.existsSync(prevSnapFile)) {
+        return fs.readFileSync(prevSnapFile, 'utf8');
+      }
+    }
+    return '';
+  }
+
+  private getDiffLines(prevContent: string, currContent: string): string {
+    const prevLines = prevContent ? prevContent.split('\n') : [];
+    const currLines = currContent ? currContent.split('\n') : [];
+    
+    let start = 0;
+    while (start < prevLines.length && start < currLines.length && prevLines[start] === currLines[start]) {
+      start++;
+    }
+    
+    let endPrev = prevLines.length - 1;
+    let endCurr = currLines.length - 1;
+    while (endPrev >= start && endCurr >= start && prevLines[endPrev] === currLines[endCurr]) {
+      endPrev--;
+      endCurr--;
+    }
+    
+    const middlePrev = prevLines.slice(start, endPrev + 1);
+    const middleCurr = currLines.slice(start, endCurr + 1);
+    
+    if (middlePrev.length === 0 && middleCurr.length === 0) {
+      return '// No changes';
+    }
+    
+    const dp: number[][] = Array(middlePrev.length + 1).fill(0).map(() => Array(middleCurr.length + 1).fill(0));
+    for (let i = 1; i <= middlePrev.length; i++) {
+      for (let j = 1; j <= middleCurr.length; j++) {
+        if (middlePrev[i - 1] === middleCurr[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+    }
+    
+    const diffMiddle: string[] = [];
+    let i = middlePrev.length;
+    let j = middleCurr.length;
+    
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && middlePrev[i - 1] === middleCurr[j - 1]) {
+        diffMiddle.unshift('  ' + middlePrev[i - 1]);
+        i--;
+        j--;
+      } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+        diffMiddle.unshift('+ ' + middleCurr[j - 1]);
+        j--;
+      } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+        diffMiddle.unshift('- ' + middlePrev[i - 1]);
+        i--;
+      }
+    }
+    
+    const contextSize = 3;
+    const result: string[] = [];
+    
+    if (start > 0) {
+      result.push('@@ ... @@');
+      const startContext = prevLines.slice(Math.max(0, start - contextSize), start).map(l => '  ' + l);
+      result.push(...startContext);
+    }
+    
+    result.push(...diffMiddle);
+    
+    if (endPrev < prevLines.length - 1) {
+      const endContext = prevLines.slice(endPrev + 1, Math.min(prevLines.length, endPrev + 1 + contextSize)).map(l => '  ' + l);
+      result.push(...endContext);
+      result.push('@@ ... @@');
+    }
+    
+    return result.join('\n');
   }
 }

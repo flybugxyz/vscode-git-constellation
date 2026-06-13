@@ -16,6 +16,14 @@ export function LocalHistoryTab() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (key: string) => {
+    setExpandedItems(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
   const isEnabled = !!gitData?.localHistoryEnabled;
 
@@ -32,11 +40,23 @@ export function LocalHistoryTab() {
           setMessage(msg.message || '');
           setError('');
         }
+      } else if (msg.type === 'searchLocalHistoryForFile') {
+        setQuery(msg.filePath);
+        setIsSearching(true);
+        setResults([]);
+        setMessage('');
+        setError('');
+        vscode.postMessage({ type: 'searchLocalHistory', query: msg.filePath });
+      } else if (msg.type === 'update') {
+        if (activeTab === 'history') {
+          setIsSearching(true);
+          vscode.postMessage({ type: 'searchLocalHistory', query });
+        }
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [activeTab, query, vscode]);
 
   // Fetch recent snapshots on mount, tab active, or query cleared
   useEffect(() => {
@@ -70,6 +90,10 @@ export function LocalHistoryTab() {
 
   const handleRestore = (filePath: string, timestamp: number) => {
     vscode.postMessage({ type: 'restoreLocalHistoryFilePrompt', filePath, timestamp });
+  };
+
+  const handleDiff = (filePath: string, timestamp: number) => {
+    vscode.postMessage({ type: 'diffLocalHistory', filePath, timestamp });
   };
 
   if (!isEnabled) {
@@ -174,83 +198,125 @@ export function LocalHistoryTab() {
           </div>
         )}
 
-        {!isSearching && results.map((res, index) => (
-          <div key={index} style={{
-            border: '1px solid var(--vscode-panel-border)',
-            borderRadius: '6px',
-            background: 'var(--vscode-editor-background)',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden'
-          }}>
-            <div style={{
+        {!isSearching && results.map((res, index) => {
+          const itemKey = `${res.filePath}-${res.timestamp}`;
+          const isExpanded = !!expandedItems[itemKey];
+          return (
+            <div key={index} style={{
+              border: '1px solid var(--vscode-panel-border)',
+              borderRadius: '6px',
+              background: 'var(--vscode-editor-background)',
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '6px 12px',
-              background: 'var(--vscode-tab-inactiveBackground)',
-              borderBottom: '1px solid var(--vscode-panel-border)',
-              fontSize: '11px'
+              flexDirection: 'column',
+              overflow: 'hidden',
+              flexShrink: 0
             }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <span className="codicon codicon-file-code" style={{ color: 'var(--vscode-textLink-foreground)' }}></span>
-                <span style={{ fontWeight: 'bold' }}>{res.filePath}</span>
-                <span style={{ opacity: 0.6 }}>({new Date(res.timestamp).toLocaleString()})</span>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {res.codeBlock && (
+              <div 
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '6px 12px',
+                  background: 'var(--vscode-tab-inactiveBackground)',
+                  borderBottom: isExpanded ? '1px solid var(--vscode-panel-border)' : 'none',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+                onClick={() => toggleExpand(itemKey)}
+                title="Click blank area to expand/collapse"
+              >
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span 
+                    className={`codicon ${isExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right'}`} 
+                    style={{ opacity: 0.7, cursor: 'pointer', padding: '2px 4px' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleExpand(itemKey);
+                    }}
+                    title="Toggle details"
+                  ></span>
+                  <div 
+                    className="history-file-path-header"
+                    style={{ display: 'flex', gap: '8px', alignItems: 'center', cursor: 'pointer' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDiff(res.filePath, res.timestamp);
+                    }}
+                    title="Compare with current file (Diff)"
+                  >
+                    <span className="codicon codicon-file-code" style={{ color: 'var(--vscode-textLink-foreground)' }}></span>
+                    <span className="history-file-name" style={{ fontWeight: 'bold' }}>{res.filePath}</span>
+                    <span style={{ opacity: 0.6 }}>({new Date(res.timestamp).toLocaleString()})</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
                   <button 
                     className="modal-button modal-button-secondary" 
-                    onClick={() => handleCopy(res.codeBlock!)}
+                    onClick={() => handleDiff(res.filePath, res.timestamp)}
                     style={{ padding: '2px 8px', fontSize: '10px', height: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
                   >
-                    <span className="codicon codicon-copy"></span>
-                    <span>Copy Code</span>
+                    <span className="codicon codicon-diff"></span>
+                    <span>Compare</span>
                   </button>
-                )}
-                <button 
-                  className="modal-button modal-button-primary" 
-                  onClick={() => handleRestore(res.filePath, res.timestamp)}
-                  style={{ padding: '2px 8px', fontSize: '10px', height: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <span className="codicon codicon-history"></span>
-                  <span>Restore File</span>
-                </button>
+                  {res.codeBlock && (
+                    <button 
+                      className="modal-button modal-button-secondary" 
+                      onClick={() => handleCopy(res.codeBlock!)}
+                      style={{ padding: '2px 8px', fontSize: '10px', height: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <span className="codicon codicon-copy"></span>
+                      <span>Copy Code</span>
+                    </button>
+                  )}
+                  <button 
+                    className="modal-button modal-button-primary" 
+                    onClick={() => handleRestore(res.filePath, res.timestamp)}
+                    style={{ padding: '2px 8px', fontSize: '10px', height: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <span className="codicon codicon-history"></span>
+                    <span>Restore File</span>
+                  </button>
+                </div>
               </div>
-            </div>
-            
-            {res.explanation && (
-              <div style={{
-                padding: '8px 12px',
-                fontSize: '11px',
-                background: 'var(--vscode-editor-background)',
-                borderBottom: '1px solid var(--vscode-panel-border)',
-                fontStyle: 'italic',
-                opacity: 0.8
-              }}>
-                💡 {res.explanation}
-              </div>
-            )}
+              
+              {isExpanded && (
+                <>
+                  {res.explanation && (
+                    <div style={{
+                      padding: '8px 12px',
+                      fontSize: '11px',
+                      background: 'var(--vscode-editor-background)',
+                      borderBottom: '1px solid var(--vscode-panel-border)',
+                      fontStyle: 'italic',
+                      opacity: 0.8
+                    }}>
+                      💡 {res.explanation}
+                    </div>
+                  )}
 
-            {res.codeBlock ? (
-              <pre style={{
-                margin: 0,
-                padding: '12px',
-                overflowX: 'auto',
-                fontSize: '11px',
-                fontFamily: 'var(--vscode-editor-font-family, monospace)',
-                background: 'var(--vscode-editor-background)',
-                color: 'var(--vscode-editor-foreground)'
-              }}>
-                <code>{res.codeBlock}</code>
-              </pre>
-            ) : res.summary ? (
-              <div style={{ padding: '12px', fontSize: '11px', opacity: 0.8 }}>
-                {res.summary}
-              </div>
-            ) : null}
-          </div>
-        ))}
+                  {res.codeBlock ? (
+                    <pre style={{
+                      margin: 0,
+                      padding: '12px',
+                      overflowX: 'auto',
+                      fontSize: '11px',
+                      fontFamily: 'var(--vscode-editor-font-family, monospace)',
+                      background: 'var(--vscode-editor-background)',
+                      color: 'var(--vscode-editor-foreground)'
+                    }}>
+                      <code>{res.codeBlock}</code>
+                    </pre>
+                  ) : res.summary ? (
+                    <div style={{ padding: '12px', fontSize: '11px', opacity: 0.8 }}>
+                      {res.summary}
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

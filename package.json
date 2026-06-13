@@ -33,6 +33,10 @@
         "title": "View File History (GitConstellation)"
       },
       {
+        "command": "git-constellation.viewFileLocalHistory",
+        "title": "View File Local History (GitConstellation)"
+      },
+      {
         "command": "git-constellation.explainMergeEditorConflict",
         "title": "Explain Conflict with AI",
         "icon": "$(sparkle)"
@@ -49,11 +53,21 @@
           "command": "git-constellation.viewFileHistory",
           "when": "resourceScheme == file",
           "group": "git-constellation"
+        },
+        {
+          "command": "git-constellation.viewFileLocalHistory",
+          "when": "resourceScheme == file",
+          "group": "git-constellation"
         }
       ],
       "editor/context": [
         {
           "command": "git-constellation.viewFileHistory",
+          "when": "resourceScheme == file",
+          "group": "git-constellation"
+        },
+        {
+          "command": "git-constellation.viewFileLocalHistory",
           "when": "resourceScheme == file",
           "group": "git-constellation"
         },

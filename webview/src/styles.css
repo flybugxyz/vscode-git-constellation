@@ -1177,3 +1177,8 @@ body.resizing-row * {
   background-color: var(--vscode-list-activeSelectionBackground, rgba(0, 122, 204, 0.2));
   color: var(--vscode-list-activeSelectionForeground, var(--vscode-foreground));
 }
+
+.history-file-path-header:hover .history-file-name {
+  text-decoration: underline;
+  color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground));
+}

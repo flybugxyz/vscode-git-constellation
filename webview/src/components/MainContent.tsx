@@ -213,13 +213,13 @@ export function MainContent({
         <div className={`tab ${activeTab === 'worktrees' ? 'active' : ''}`} onClick={() => { setActiveTab('worktrees'); selection.clearSelection(); setIsCompareMode(false); }}>
           Worktrees {gitData?.worktrees && gitData.worktrees.length > 0 && `(${gitData.worktrees.length})`}
         </div>
-        {/* <div className={`tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => { setActiveTab('history'); selection.clearSelection(); setIsCompareMode(false); }}>
+        <div className={`tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => { setActiveTab('history'); selection.clearSelection(); setIsCompareMode(false); }}>
           Local History
-        </div> */}
+        </div>
         <div style={{ flex: 1 }}></div>
         <div 
           className="tab" 
-          title="Refresh Git Status"
+          title={activeTab === 'history' ? 'Refresh Local History' : 'Refresh Git Status'}
           onClick={() => vscode.postMessage({ type: 'refresh' })}
           style={{ padding: '0 10px', display: 'flex', alignItems: 'center' }}
         >
