@@ -10,6 +10,7 @@ interface HistoryIndexEntry {
   hash: string;
   addedLines: number;
   removedLines: number;
+  workspacePath?: string;
 }
 
 export class GitLocalHistoryService {
@@ -20,6 +21,63 @@ export class GitLocalHistoryService {
   constructor(private context: vscode.ExtensionContext) {
     this.historyDir = path.join(this.context.globalStorageUri.fsPath, 'local-history');
     this.indexFile = path.join(this.historyDir, 'history-index.json');
+  }
+
+  private getSnapshotPath(entry: HistoryIndexEntry): string {
+    if (entry.workspacePath) {
+      const workspaceHash = crypto.createHash('md5').update(entry.workspacePath).digest('hex');
+      return path.join(this.historyDir, workspaceHash, entry.filePath, `${entry.timestamp}.txt`);
+    }
+    // Legacy path fallback
+    return path.join(this.historyDir, entry.filePath, `${entry.timestamp}.txt`);
+  }
+
+  private isEntryInActiveWorkspace(entry: HistoryIndexEntry, activeRepoPath?: string): boolean {
+    if (entry.workspacePath) {
+      const entryWorkspace = path.normalize(entry.workspacePath).replace(/\\/g, '/');
+      if (activeRepoPath) {
+        const activeRepo = path.normalize(activeRepoPath).replace(/\\/g, '/');
+        if (entryWorkspace === activeRepo || entryWorkspace.startsWith(activeRepo + '/') || activeRepo.startsWith(entryWorkspace + '/')) {
+          return true;
+        }
+        return false;
+      }
+      
+      const workspaceFolders = vscode.workspace.workspaceFolders || [];
+      return workspaceFolders.some(folder => {
+        const folderPath = path.normalize(folder.uri.fsPath).replace(/\\/g, '/');
+        return entryWorkspace === folderPath;
+      });
+    }
+
+    // Legacy entry fallback: default to true if only one workspace folder is open
+    const workspaceFolders = vscode.workspace.workspaceFolders || [];
+    if (workspaceFolders.length === 1) {
+      return true;
+    }
+    if (activeRepoPath) {
+      const absolutePath = path.join(activeRepoPath, entry.filePath);
+      if (fs.existsSync(absolutePath)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public getSnapshotPathForFile(filePath: string, timestamp: number): string | undefined {
+    let index: HistoryIndexEntry[] = [];
+    if (fs.existsSync(this.indexFile)) {
+      try {
+        index = JSON.parse(fs.readFileSync(this.indexFile, 'utf8'));
+      } catch {
+        index = [];
+      }
+    }
+    const entry = index.find(e => e.filePath === filePath && e.timestamp === timestamp);
+    if (entry) {
+      return this.getSnapshotPath(entry);
+    }
+    return path.join(this.historyDir, filePath, `${timestamp}.txt`);
   }
 
   public activate() {
@@ -88,8 +146,12 @@ export class GitLocalHistoryService {
       }
     }
 
+    const workspacePath = workspaceFolder.uri.fsPath;
+
     // Check if hash matches the latest snapshot for this file
-    const fileEntries = index.filter(e => e.filePath === relativePath).sort((a, b) => b.timestamp - a.timestamp);
+    const fileEntries = index
+      .filter(e => e.filePath === relativePath && e.workspacePath === workspacePath)
+      .sort((a, b) => b.timestamp - a.timestamp);
     if (fileEntries.length > 0 && fileEntries[0].hash === currentHash) {
       // Content has not changed
       return;
@@ -97,7 +159,8 @@ export class GitLocalHistoryService {
 
     // Save snapshot file
     const timestamp = Date.now();
-    const fileSnapDir = path.join(this.historyDir, relativePath);
+    const workspaceHash = crypto.createHash('md5').update(workspacePath).digest('hex');
+    const fileSnapDir = path.join(this.historyDir, workspaceHash, relativePath);
     if (!fs.existsSync(fileSnapDir)) {
       fs.mkdirSync(fileSnapDir, { recursive: true });
     }
@@ -109,7 +172,7 @@ export class GitLocalHistoryService {
     let addedLines = 0;
     let removedLines = 0;
     if (fileEntries.length > 0) {
-      const prevSnapFile = path.join(this.historyDir, relativePath, `${fileEntries[0].timestamp}.txt`);
+      const prevSnapFile = this.getSnapshotPath(fileEntries[0]);
       if (fs.existsSync(prevSnapFile)) {
         const prevContent = fs.readFileSync(prevSnapFile, 'utf8');
         const prevLines = prevContent.split('\n');
@@ -124,13 +187,16 @@ export class GitLocalHistoryService {
       filePath: relativePath,
       hash: currentHash,
       addedLines,
-      removedLines
+      removedLines,
+      workspacePath
     });
 
     // Run cleanup/pruning for this file
     const maxSnapshotsPerFile = 30;
     const maxAgeDays = 14;
-    const fileEntriesUpdated = index.filter(e => e.filePath === relativePath).sort((a, b) => b.timestamp - a.timestamp);
+    const fileEntriesUpdated = index
+      .filter(e => e.filePath === relativePath && e.workspacePath === workspacePath)
+      .sort((a, b) => b.timestamp - a.timestamp);
     
     const keepEntries: HistoryIndexEntry[] = [];
     const deleteEntries: HistoryIndexEntry[] = [];
@@ -150,20 +216,20 @@ export class GitLocalHistoryService {
 
     // Delete physically
     for (const del of deleteEntries) {
-      const delPath = path.join(this.historyDir, del.filePath, `${del.timestamp}.txt`);
+      const delPath = this.getSnapshotPath(del);
       if (fs.existsSync(delPath)) {
         fs.unlinkSync(delPath);
       }
     }
 
     // Rebuild index without deleted entries
-    const otherEntries = index.filter(e => e.filePath !== relativePath);
+    const otherEntries = index.filter(e => !(e.filePath === relativePath && e.workspacePath === workspacePath));
     index = [...otherEntries, ...keepEntries];
 
     fs.writeFileSync(this.indexFile, JSON.stringify(index, null, 2), 'utf8');
   }
 
-  public async search(query: string): Promise<any> {
+  public async search(query: string, activeRepoPath?: string): Promise<any> {
     if (!fs.existsSync(this.indexFile)) {
       return { results: [], message: 'No local history snapshots available.' };
     }
@@ -175,6 +241,9 @@ export class GitLocalHistoryService {
       return { results: [], error: 'Failed to read history index.' };
     }
 
+    // Filter index to only keep entries in active workspace/repository
+    index = index.filter(entry => this.isEntryInActiveWorkspace(entry, activeRepoPath));
+
     if (index.length === 0) {
       return { results: [], message: 'No local history snapshots found.' };
     }
@@ -183,7 +252,7 @@ export class GitLocalHistoryService {
     if (!query || !query.trim()) {
       const sorted = [...index].sort((a, b) => b.timestamp - a.timestamp).slice(0, 15);
       const results = sorted.map(entry => {
-        const snapFilePath = path.join(this.historyDir, entry.filePath, `${entry.timestamp}.txt`);
+        const snapFilePath = this.getSnapshotPath(entry);
         let codeBlock = '';
         if (fs.existsSync(snapFilePath)) {
           const currContent = fs.readFileSync(snapFilePath, 'utf8');
@@ -215,7 +284,7 @@ export class GitLocalHistoryService {
       });
 
       // Also match keywords in snapshot code content
-      const snapFilePath = path.join(this.historyDir, entry.filePath, `${entry.timestamp}.txt`);
+      const snapFilePath = this.getSnapshotPath(entry);
       if (fs.existsSync(snapFilePath)) {
         try {
           const content = fs.readFileSync(snapFilePath, 'utf8').toLowerCase();
@@ -250,7 +319,7 @@ export class GitLocalHistoryService {
       // No AI config, just return basic list of candidates with diffs
       return {
         results: candidates.map(c => {
-          const snapFilePath = path.join(this.historyDir, c.entry.filePath, `${c.entry.timestamp}.txt`);
+          const snapFilePath = this.getSnapshotPath(c.entry);
           let diffBlock = '';
           if (fs.existsSync(snapFilePath)) {
             const currContent = fs.readFileSync(snapFilePath, 'utf8');
@@ -269,7 +338,7 @@ export class GitLocalHistoryService {
 
     // Compile candidate context
     const candidatesContext = candidates.map((c, idx) => {
-      const snapFilePath = path.join(this.historyDir, c.entry.filePath, `${c.entry.timestamp}.txt`);
+      const snapFilePath = this.getSnapshotPath(c.entry);
       let contentSample = '';
       if (fs.existsSync(snapFilePath)) {
         const currContent = fs.readFileSync(snapFilePath, 'utf8');
@@ -316,7 +385,7 @@ Respond in structured JSON format:
 
         if (parsed.found && parsed.matchIndex !== undefined && parsed.matchIndex >= 0) {
           const match = candidates[parsed.matchIndex].entry;
-          const snapFilePath = path.join(this.historyDir, match.filePath, `${match.timestamp}.txt`);
+          const snapFilePath = this.getSnapshotPath(match);
           let diffBlock = '';
           if (fs.existsSync(snapFilePath)) {
             const currContent = fs.readFileSync(snapFilePath, 'utf8');
@@ -334,7 +403,7 @@ Respond in structured JSON format:
         } else {
           // Fallback: return raw list of candidates with diffs
           const results = candidates.map(c => {
-            const snapFilePath = path.join(this.historyDir, c.entry.filePath, `${c.entry.timestamp}.txt`);
+            const snapFilePath = this.getSnapshotPath(c.entry);
             let diffBlock = '';
             if (fs.existsSync(snapFilePath)) {
               const currContent = fs.readFileSync(snapFilePath, 'utf8');
@@ -358,7 +427,7 @@ Respond in structured JSON format:
       // Fallback: return raw list of candidates with diffs
       return {
         results: candidates.map(c => {
-          const snapFilePath = path.join(this.historyDir, c.entry.filePath, `${c.entry.timestamp}.txt`);
+          const snapFilePath = this.getSnapshotPath(c.entry);
           let diffBlock = '';
           if (fs.existsSync(snapFilePath)) {
             const currContent = fs.readFileSync(snapFilePath, 'utf8');
@@ -378,10 +447,10 @@ Respond in structured JSON format:
 
   private getPrevContent(index: HistoryIndexEntry[], entry: HistoryIndexEntry): string {
     const fileEntries = index
-      .filter(e => e.filePath === entry.filePath && e.timestamp < entry.timestamp)
+      .filter(e => e.filePath === entry.filePath && e.workspacePath === entry.workspacePath && e.timestamp < entry.timestamp)
       .sort((a, b) => b.timestamp - a.timestamp);
     if (fileEntries.length > 0) {
-      const prevSnapFile = path.join(this.historyDir, entry.filePath, `${fileEntries[0].timestamp}.txt`);
+      const prevSnapFile = this.getSnapshotPath(fileEntries[0]);
       if (fs.existsSync(prevSnapFile)) {
         return fs.readFileSync(prevSnapFile, 'utf8');
       }

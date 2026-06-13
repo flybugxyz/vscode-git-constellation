@@ -243,7 +243,7 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
             }
             break;
           case 'searchLocalHistory': {
-            const result = await this._localHistoryService.search(data.query);
+            const result = await this._localHistoryService.search(data.query, this._gitService.activeRepoPath);
             webviewView.webview.postMessage({ 
               type: 'searchLocalHistoryResult', 
               results: result.results, 
@@ -254,8 +254,8 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
           }
           case 'diffLocalHistory': {
             const { filePath, timestamp } = data;
-            const snapFile = path.join(this._localHistoryService.historyDir, filePath, `${timestamp}.txt`);
-            if (fs.existsSync(snapFile)) {
+            const snapFile = this._localHistoryService.getSnapshotPathForFile(filePath, timestamp);
+            if (snapFile && fs.existsSync(snapFile)) {
               const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
               if (workspaceRoot) {
                 const currentFilePath = path.join(workspaceRoot, filePath);
@@ -290,8 +290,8 @@ class GitJBViewProvider implements vscode.WebviewViewProvider {
               'Restore'
             );
             if (selection === 'Restore') {
-              const snapFile = path.join(this._localHistoryService.historyDir, filePath, `${timestamp}.txt`);
-              if (fs.existsSync(snapFile)) {
+              const snapFile = this._localHistoryService.getSnapshotPathForFile(filePath, timestamp);
+              if (snapFile && fs.existsSync(snapFile)) {
                 const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
                 if (workspaceRoot) {
                   const destPath = path.join(workspaceRoot, filePath);
